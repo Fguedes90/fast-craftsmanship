@@ -1,10 +1,9 @@
 """Custom exceptions for Railway Oriented Programming."""
-from typing import Optional
-from expression import Result, Ok, Error
+from expression import Result, Error
 
 class ScraperException(Exception):
     """Base exception for scraper operations."""
-    def __init__(self, message: str, original_error: Optional[Exception] = None):
+    def __init__(self, message: str, original_error: Exception | None = None):
         self.message = message
         self.original_error = original_error
         super().__init__(self.message)
@@ -33,8 +32,6 @@ def capture_exception(error: Exception, error_type: type[ScraperException], mess
     """Capture and convert an exception to a Result type."""
     return Error(error_type(message, error))
 
-def ensure_result(value: Optional[Result], error_message: str) -> Result:
+def ensure_result(value: Result | None, error_message: str) -> Result:
     """Ensure a value is a Result type."""
-    if value is None:
-        return Error(ProcessingException(error_message))
-    return value
+    return Error(ProcessingException(error_message)) if value is None else value

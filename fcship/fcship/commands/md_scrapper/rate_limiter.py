@@ -2,7 +2,7 @@
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from expression import Result, Ok, Error
 from .exceptions import ProcessingException, capture_exception
 from .types import Url
@@ -85,7 +85,7 @@ async def with_rate_limit(
             return global_result
             
         domain_result = await domain_limiter.acquire(logger)
-        if isinstance(domain_result, Error):
+        if domain_result.is_error():
             return domain_result
         
         # Execute the operation

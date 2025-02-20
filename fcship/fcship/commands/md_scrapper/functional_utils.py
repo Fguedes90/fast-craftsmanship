@@ -1,4 +1,5 @@
 """Utility functions for functional operations."""
+import logging
 from typing import TypeVar, Callable, Any, Awaitable
 from expression import pipe, Result, Ok, Error, option, Some, Nothing
 from functools import reduce
@@ -41,13 +42,13 @@ def traverse_option(xs: list[A], f: Callable[[A], option[B]]) -> option[list[B]]
 async def pipe_async(*functions: Callable[[Any], Awaitable[Result[Any, Exception]]]) -> Callable[[Any], Awaitable[Result[Any, Exception]]]:
     """Compose multiple async Result-returning functions."""
     async def compose_two_async(f: Callable[[B], Awaitable[Result[C, Exception]]], 
-                              g: Callable[[A], Awaitable[Result[B, Exception]]]) -> Callable[[A], Awaitable[Result[C, Exception]]]:
+                                  g: Callable[[A], Awaitable[Result[B, Exception]]]) -> Callable[[A], Awaitable[Result[C, Exception]]]:
         async def composed(x: A) -> Result[C, Exception]:
             result_b = await g(x)
-            if isinstance(result_b, Error):
-                return result_b
-            return await f(result_b.value)
+            return result_b if isinstance(result_b, Error) else await f(result_b.value)
+
         return composed
+
     return reduce(compose_two_async, functions)
 
 def handle_error(error: Exception, context: str = "") -> Result[Any, Exception]:

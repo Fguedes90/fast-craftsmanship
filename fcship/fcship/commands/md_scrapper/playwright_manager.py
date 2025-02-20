@@ -1,5 +1,5 @@
 """Playwright manager module using Expression for functional approach."""
-from typing import Callable
+from typing import Callable, Generator
 import subprocess
 import sys
 import logging
@@ -32,7 +32,7 @@ def install_playwright_browser() -> Result[bool, Exception]:
         return Error(e)
 
 @effect.result[bool, Exception]()
-def ensure_playwright() -> Result[bool, Exception]:
+def ensure_playwright() -> Generator[Result[bool, Exception], None, bool]:
     """Ensure Playwright is installed and ready to use using ROP."""
     is_installed = yield from check_playwright()
     

@@ -1,6 +1,6 @@
 """Validation specific exceptions."""
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Any
 from .exceptions import ScraperException
 
 @dataclass
@@ -8,7 +8,7 @@ class ValidationError:
     """Validation error details."""
     field: str
     message: str
-    value: Optional[Any] = None
+    value: Any | None = None
 
 class ConfigValidationException(ScraperException):
     """Exception for configuration validation errors."""

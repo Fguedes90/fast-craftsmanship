@@ -1,9 +1,8 @@
 """Context module for managing scraper state."""
 from dataclasses import dataclass
-from typing import Optional
 import asyncio
 from pathlib import Path
-from expression import Result, Ok, Error
+from expression import Result, Ok
 from playwright.async_api import BrowserContext
 from .monitoring import ScraperMonitor
 from .url_tracker import UrlTracker
@@ -65,7 +64,7 @@ class ScraperContext:
         try:
             self.progress.close()
             metrics_result = await self.monitor.finish()
-            if isinstance(metrics_result, Ok):
+            if metrics_result.is_ok():
                 await self.logger.log_metrics(metrics_result.value)
             return metrics_result
         except Exception as e:

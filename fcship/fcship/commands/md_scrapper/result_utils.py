@@ -1,5 +1,6 @@
 """Result transformations and error handling utilities."""
-from typing import TypeVar, Callable, Awaitable, Optional, Any
+from collections.abc import Awaitable, Callable
+from typing import TypeVar, Any
 from expression import Result, Ok, Error, pipe
 from functools import wraps
 from .exceptions import ProcessingException, capture_exception
@@ -80,14 +81,12 @@ async def log_error_async(
     return result
 
 def ensure_ok(
-    value: Optional[A], 
     error_type: type[ProcessingException],
-    error_message: str
+    error_message: str,
+    value: A | None = None, 
 ) -> Result[A, ProcessingException]:
     """Convert an optional value to a Result."""
-    if value is None:
-        return Error(error_type(error_message))
-    return Ok(value)
+    return Error(error_type(error_message)) if value is None else Ok(value)
 
 def compose_results(
     *functions: Callable[[A], Result[A, ProcessingException]]

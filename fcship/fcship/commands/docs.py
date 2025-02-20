@@ -1,14 +1,14 @@
 """Command for running MD scraper with functional approach."""
 import typer
 import asyncio
-from typing import List, Optional
+from typing import Optional
 from pathlib import Path
 from expression import Result, Ok, Error
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .md_scrapper.orchestrator import run_scraper
-from .md_scrapper.exceptions import ProcessingException
+from .docs_downloader.orchestrator import run_scraper
+from .docs_downloader.exceptions import ProcessingException
 from ..utils import handle_command_errors, error_message
 
 console = Console()
@@ -16,7 +16,7 @@ console = Console()
 @handle_command_errors
 async def scrape_docs(
     root_url: str,
-    allowed_paths: List[str],
+    allowed_paths: list[str],
     output_dir: str,
     max_concurrent: Optional[int] = 5,
     max_depth: Optional[int] = 3,
@@ -71,7 +71,7 @@ async def scrape_docs(
 def docs(
     operation: str = typer.Argument(..., help="Operation to perform [scrape]"),
     root_url: str = typer.Option(..., "--url", "-u", help="Root URL to start scraping from"),
-    allowed_paths: List[str] = typer.Option(..., "--paths", "-p", help="List of allowed paths to scrape"),
+    allowed_paths: list[str] = typer.Option(..., "--paths", "-p", help="List of allowed paths to scrape"),
     output_dir: str = typer.Option("./docs", "--output", "-o", help="Output directory for scraped docs"),
     max_concurrent: Optional[int] = typer.Option(5, "--concurrent", "-c", help="Maximum concurrent workers"),
     max_depth: Optional[int] = typer.Option(3, "--depth", "-d", help="Maximum depth to scrape"),

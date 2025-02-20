@@ -12,10 +12,10 @@ from .validation_exceptions import (
 from .types import Url, Depth
 from .type_helpers import ensure_url, ensure_depth
 
-def collect_validation_errors(validations: List[Result[Any, ValidationError]]) -> Result[None, ConfigValidationException]:
+def collect_validation_errors(validations: list[Result[Any, ValidationError]]) -> Result[None, ConfigValidationException]:
     """Collect all validation errors into a single result."""
     errors = [error for result in validations if isinstance(result, Error) for error in [result.error]]
-    return Ok(None) if not errors else Error(ConfigValidationException(errors))
+    return Error(ConfigValidationException(errors)) if errors else Ok(None)
 
 def validate_url_format(url: str) -> Result[str, ValidationError]:
     """Validate URL format."""
@@ -41,7 +41,7 @@ def validate_url_format(url: str) -> Result[str, ValidationError]:
             value=url
         ))
 
-def validate_paths(paths: List[str]) -> Result[List[str], ValidationError]:
+def validate_paths(paths: list[str]) -> Result[list[str], ValidationError]:
     """Validate allowed paths."""
     if not paths:
         return Error(ValidationError(
@@ -94,21 +94,20 @@ def validate_content_selector(selector: Optional[str]) -> Result[Optional[str], 
     """Validate content selector if provided."""
     if selector is None:
         return Ok(None)
-    
-    selector = selector.strip()
-    if not selector:
+
+    if selector := selector.strip():
+        return Ok(selector)
+    else:
         return Error(ValidationError(
             field="content_selector",
             message="Cannot be empty if provided",
             value=selector
         ))
-    
-    return Ok(selector)
 
 @pipeline
 def validate_scraper_config(
     root_url: str,
-    allowed_paths: List[str],
+    allowed_paths: list[str],
     max_concurrent: int,
     max_depth: int,
     timeout: float

@@ -1,17 +1,16 @@
 """Configuration module with functional approach."""
 from dataclasses import dataclass
-from typing import List, Optional
 from expression import Result, Ok, Error
 import os
 
 @dataclass
 class ScrapeConfig:
     root_url: str
-    allowed_paths: List[str]
+    allowed_paths: list[str]
     max_concurrent: int
     output_dir: str
     max_depth: int = 3
-    content_selector: Optional[str] = None
+    content_selector: str | None = None
     timeout: float = 30.0
     max_retries: int = 3
     browser_instances: int = 3
@@ -54,11 +53,11 @@ def ensure_output_directory(config: ScrapeConfig) -> Result[ScrapeConfig, Except
 
 def create_config(
     root_url: str,
-    allowed_paths: List[str],
+    allowed_paths: list[str],
     output_dir: str,
     max_concurrent: int = 5,
     max_depth: int = 3,
-    content_selector: Optional[str] = None,
+    content_selector: str | None = None,
     timeout: float = 30.0,
     max_retries: int = 3,
     browser_instances: int = 1

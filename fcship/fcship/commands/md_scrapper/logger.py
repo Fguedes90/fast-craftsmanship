@@ -2,9 +2,9 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import  Any
 from dataclasses import dataclass
-from expression import Result, Ok, Error
+from expression import Result, Ok
 from .exceptions import ProcessingException, capture_exception
 from .types import Url
 
@@ -27,21 +27,17 @@ class FunctionalLogger:
         """Setup logger with file and console handlers."""
         logger = logging.getLogger('scraper')
         logger.setLevel(self.config.log_level)
-        
-        # Create handlers
-        handlers = []
-        
+
         # File handler
         file_handler = logging.FileHandler(self.config.log_file)
         file_handler.setFormatter(logging.Formatter(self.config.format))
-        handlers.append(file_handler)
-        
+        handlers = [file_handler]
         # Console handler if enabled
         if self.config.console_output:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(logging.Formatter(self.config.format))
             handlers.append(console_handler)
-        
+
         # Remove existing handlers and add new ones
         logger.handlers.clear()
         for handler in handlers:
@@ -55,7 +51,7 @@ class FunctionalLogger:
         except Exception as e:
             return capture_exception(e, ProcessingException, f"Failed to log info: {message}")
 
-    def error(self, message: str, error: Optional[Exception] = None) -> Result[None, ProcessingException]:
+    def error(self, message: str, error: Exception | None = None) -> Result[None, ProcessingException]:
         """Log error message."""
         try:
             if error:
@@ -94,7 +90,7 @@ class FunctionalLogger:
         """Log URL processing failure."""
         return self.error(f"Failed to process URL: {url}", error)
 
-    async def log_metrics(self, metrics: dict) -> Result[None, ProcessingException]:
+    async def log_metrics(self, metrics: dict[str, Any]) -> Result[None, ProcessingException]:
         """Log scraping metrics."""
         try:
             self.info("Scraping completed. Final metrics:")

@@ -1,7 +1,7 @@
 """Content management module with functional approach."""
 import os
 import logging
-from expression import Result, Ok, pipe
+from expression import Ok, pipe
 from .url_utils import get_safe_filename
 from .types import (
     ContentResult, 

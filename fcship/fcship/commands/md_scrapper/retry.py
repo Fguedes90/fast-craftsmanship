@@ -1,6 +1,7 @@
 """Retry handling with functional approach."""
 import asyncio
-from typing import TypeVar, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 from expression import Result, Ok, Error
 from .exceptions import ProcessingException, NetworkException
 from .result_utils import catch_errors_async

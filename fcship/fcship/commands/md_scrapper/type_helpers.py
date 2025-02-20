@@ -1,5 +1,6 @@
 """Type helpers for safe type handling."""
-from typing import TypeVar, Callable, Any
+from collections.abc import Callable
+from typing import TypeVar, Any
 from expression import Result, Ok, Error, pipe
 from .types import Url, Depth, Content, Filename
 from .exceptions import ValidationException

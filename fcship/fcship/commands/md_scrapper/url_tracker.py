@@ -1,12 +1,10 @@
 """URL tracking module with functional approach."""
 import asyncio
-import logging
-from typing import Set, Dict, List, Tuple, Callable
-from expression import Result, Ok, Error, pipe
+from typing import set, dict, list, tuple, Any
+from expression import Result, Ok, pipe
 from .url_utils import normalize_url, join_urls, validate_url
 from .functional_utils import (
     pipe_async,
-    handle_error,
     log_and_continue,
     ensure_async
 )
@@ -21,21 +19,21 @@ from .types import (
 
 class UrlTracker:
     def __init__(self):
-        self.visited_urls: Set[Url] = set()
-        self.processed_urls: Set[Url] = set()
-        self.failed_urls: Dict[Url, str] = {}
+        self.visited_urls: set[Url] = set()
+        self.processed_urls: set[Url] = set()
+        self.failed_urls: dict[Url, str] = {}
         
         self.visited_lock = asyncio.Lock()
         self.processed_lock = asyncio.Lock()
         self.failed_lock = asyncio.Lock()
 
 async def process_link(
-    link,
+    link: Any,
     base_url: Url,
     depth: Depth,
-    allowed_paths: List[str],
+    allowed_paths: list[str],
     tracker: UrlTracker
-) -> Result[Tuple[Url, Depth], Exception]:
+) -> Result[tuple[Url, Depth], Exception]:
     """Process a single link using ROP."""
     try:
         href = await link.get_attribute('href')
@@ -59,7 +57,7 @@ async def process_link(
         next_base_url = normalized_url.value
         validation_result = await pipe_async(
             lambda url: ensure_async(validate_url(url, base_url, allowed_paths)),
-            lambda valid: ensure_async(Ok(valid and not await is_url_processed(next_base_url, tracker)))
+            lambda valid: ensure_async(Ok(valid and not (is_url_processed(next_base_url, tracker))))
         )(next_base_url)
 
         if isinstance(validation_result, Ok) and validation_result.value:
@@ -74,23 +72,23 @@ async def process_link(
         )
 
 async def process_page_links(
-    page,
+    page: Any,
     base_url: Url,
     depth: Depth,
-    allowed_paths: List[str],
+    allowed_paths: list[str],
     tracker: UrlTracker,
-    progress_callback: Callable
+    progress_callback: callable
 ) -> LinkResult:
     """Process page links using ROP."""
     try:
         links = await page.query_selector_all('a[href]')
-        new_links: List[Tuple[Url, Depth]] = []
+        new_links: list[tuple[Url, Depth]] = []
 
         for link in links:
             link_result = await process_link(link, base_url, depth, allowed_paths, tracker)
             
-            if isinstance(link_result, Ok) and link_result.value:
-                new_links.append(link_result.value)
+            if link_result.is_ok():
+                new_links.append(link_result.ok)
                 await progress_callback()
 
         return Ok(new_links)

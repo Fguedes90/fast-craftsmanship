@@ -1,8 +1,8 @@
 """Worker module with functional approach."""
 import asyncio
-from expression import Result, Ok, Error, pipe
-from typing import Tuple, List
-from playwright.async_api import BrowserContext
+from expression import Result, Ok, Error
+from typing import Any
+from fcship.commands.md_scrapper.exceptions import ProcessingException
 from .url_utils import normalize_url, validate_url
 from .content_manager import extract_content, save_content
 from .url_tracker import (
@@ -11,14 +11,12 @@ from .url_tracker import (
     mark_url_processed,
     mark_url_failed,
     process_page_links,
-    UrlTracker
 )
-from .progress import increment_total, ProgressTracker
+from .progress import increment_total
 from .types import (
     Url,
     Depth,
     LinkResult,
-    ScraperResult,
     ProcessingError,
     NetworkException,
     make_error
@@ -32,7 +30,7 @@ from .result_utils import catch_errors_async
 from .context import ScraperContext
 
 @catch_errors_async(NetworkException, "Failed to access page")
-async def access_page(page, url: str, timeout: float) -> Result[bool, ProcessingException]:
+async def access_page(page: Any, url: str, timeout: float) -> Result[bool, ProcessingException]:
     """Access a page with retry and timeout."""
     response = await page.goto(url, wait_until='networkidle', timeout=timeout * 1000)
     return Ok(response is not None and response.ok)
@@ -40,7 +38,7 @@ async def access_page(page, url: str, timeout: float) -> Result[bool, Processing
 async def process_page(
     url: Url,
     depth: Depth,
-    page,
+    page: Any,
     context: ScraperContext
 ) -> LinkResult:
     """Process page using ROP with retry capabilities."""
@@ -48,12 +46,12 @@ async def process_page(
     
     try:
         # Normalize and validate URL
+        async def validate_normalized(normalized):
+            return Ok(None) if await is_url_processed(normalized, context.url_tracker) else Ok(normalized)
+
         url_validation = await pipe_async(
             lambda u: ensure_async(normalize_url(u)),
-            lambda normalized: ensure_async(
-                Ok(normalized) if not await is_url_processed(normalized, context.url_tracker)
-                else Ok(None)
-            )
+            validate_normalized
         )(url)
 
         if not isinstance(url_validation, Ok) or not url_validation.value:

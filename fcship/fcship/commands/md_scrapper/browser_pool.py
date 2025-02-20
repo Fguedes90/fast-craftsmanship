@@ -1,7 +1,7 @@
 """Browser pool manager with functional approach."""
 from dataclasses import dataclass
-from typing import List, Optional, AsyncGenerator
-from expression import Result, Ok, Error, pipe
+from collections.abc import AsyncGenerator
+from expression import Result, Ok, Error
 from playwright.async_api import async_playwright, Browser, BrowserContext
 from .exceptions import ProcessingException, capture_exception
 from .logger import FunctionalLogger
@@ -9,8 +9,8 @@ from .logger import FunctionalLogger
 @dataclass
 class BrowserPool:
     """Manages a pool of browser instances."""
-    browsers: List[Browser]
-    contexts: List[BrowserContext]
+    browsers: list[Browser]
+    contexts: list[BrowserContext]
     current_index: int = 0
     
     @classmethod
@@ -24,8 +24,8 @@ class BrowserPool:
             await logger.info(f"Creating browser pool with {instances} instances")
             p = await async_playwright().start()
             
-            browsers: List[Browser] = []
-            contexts: List[BrowserContext] = []
+            browsers: list[Browser] = []
+            contexts: list[BrowserContext] = []
             
             for i in range(instances):
                 await logger.debug(f"Launching browser instance {i+1}")
