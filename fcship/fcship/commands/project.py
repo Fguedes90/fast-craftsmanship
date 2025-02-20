@@ -4,7 +4,7 @@ from pathlib import Path
 from rich.panel import Panel
 from ..utils import (
     handle_command_errors, 
-    create_files, 
+    file_creation_status, 
     validate_operation, 
     success_message,
     console
@@ -27,11 +27,11 @@ def init_project(name: str) -> None:
     
     root = Path(name)
     # Create project structure
-    with console.status("[bold green]Creating project structure...") as status:
+    with file_creation_status("Creating project structure...") as status:
         # Create directories
         for folder in folders:
             (root / folder).mkdir(parents=True, exist_ok=True)
-            status.update(f"Created directory: [cyan]{name}/{folder}[/cyan]")
+            status.add_file(f"{name}/{folder}", "Created directory")
         
         # Create project files
         files = get_project_templates(name)
@@ -39,7 +39,7 @@ def init_project(name: str) -> None:
             path = root / file_path
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
-            status.update(f"Created file: [cyan]{name}/{file_path}[/cyan]")
+            status.add_file(f"{name}/{file_path}")
     
     success_message(f"Initialized project {name}")
     

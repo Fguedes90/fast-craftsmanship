@@ -1,7 +1,15 @@
 """Test command implementation."""
 import typer
+from pathlib import Path
 from ..templates.test_templates import get_test_template
-from ..utils import handle_command_errors, create_files, validate_operation, success_message, error_message
+from ..utils import (
+    handle_command_errors,
+    validate_operation,
+    success_message,
+    error_message,
+    file_creation_status,
+    ensure_directory
+)
 
 @handle_command_errors
 def create_test(test_type: str, name: str) -> None:
@@ -14,8 +22,12 @@ def create_test(test_type: str, name: str) -> None:
         raise typer.Exit(1)
     
     content = get_test_template(test_type, name)
-    files = {f"tests/{test_type}/{name}/test_{name}.py": content}
-    create_files(files)
+    with file_creation_status(f"Creating {test_type} test files...") as status:
+        file_path = f"tests/{test_type}/{name}/test_{name}.py"
+        path = Path(file_path)
+        ensure_directory(path)
+        path.write_text(content)
+        status.add_file(str(path))
     success_message(f"Created {test_type} test {name}")
 
 def test(

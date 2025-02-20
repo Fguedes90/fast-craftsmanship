@@ -1,10 +1,13 @@
 """Shared utilities for CLI commands."""
-from typing import Callable, TypeVar, Any, Dict, List, Optional
+from typing import Callable, TypeVar, Any, Dict, List, Optional, Iterator
 from pathlib import Path
 import typer
 from functools import wraps
 from rich.console import Console
 from rich.panel import Panel
+from rich.live import Live
+from rich.table import Table
+from contextlib import contextmanager
 
 T = TypeVar('T')
 console = Console()
@@ -13,6 +16,37 @@ def ensure_directory(path: Path) -> None:
     """Ensure a directory exists, creating it if necessary."""
     path.parent.mkdir(parents=True, exist_ok=True)
 
+class FileCreationTracker:
+    """Track file creation progress and display it in a table."""
+    def __init__(self):
+        self.files: List[tuple[str, str]] = []
+    
+    def add_file(self, path: str, status: str = "Created") -> None:
+        """Add a file to the tracker."""
+        self.files.append((path, status))
+    
+    def make_table(self) -> Table:
+        """Create a table showing file creation status."""
+        table = Table(show_header=False, box=None)
+        table.add_column("Status", style="bold green", no_wrap=True)
+        table.add_column("File", style="cyan")
+        
+        for path, status in self.files:
+            table.add_row(f"✓ {status}:", path)
+        
+        return table
+
+@contextmanager
+def file_creation_status(title: str = "Creating files...") -> Iterator[FileCreationTracker]:
+    """Context manager for tracking and displaying file creation status."""
+    tracker = FileCreationTracker()
+    with Live(tracker.make_table(), console=console, refresh_per_second=4) as live:
+        try:
+            yield tracker
+            live.update(tracker.make_table())
+        finally:
+            console.line()
+
 def create_files(files: Dict[str, str], base_path: str = "") -> None:
     """Create multiple files with their contents.
     
@@ -20,12 +54,12 @@ def create_files(files: Dict[str, str], base_path: str = "") -> None:
         files: Dictionary mapping file paths to their contents
         base_path: Optional base path to prepend to all file paths
     """
-    with console.status("[bold green]Creating files..."):
+    with file_creation_status() as status:
         for file_path, content in files.items():
             path = Path(base_path) / file_path if base_path else Path(file_path)
             ensure_directory(path)
             path.write_text(content)
-            console.print(f"Created: [cyan]{path}[/cyan]")
+            status.add_file(str(path))
 
 def validate_operation(
     operation: str,
@@ -33,14 +67,7 @@ def validate_operation(
     name: Optional[str] = None,
     requires_name: Optional[List[str]] = None
 ) -> None:
-    """Validate command operation and arguments.
-    
-    Args:
-        operation: The operation to validate
-        valid_operations: List of valid operation names
-        name: Optional name argument to validate
-        requires_name: List of operations that require a name argument
-    """
+    """Validate command operation and arguments."""
     if operation not in valid_operations:
         operations_str = ", ".join(f"[cyan]{op}[/cyan]" for op in valid_operations)
         console.print(Panel(

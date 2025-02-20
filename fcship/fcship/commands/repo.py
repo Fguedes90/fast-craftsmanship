@@ -1,13 +1,25 @@
 """Repository command implementation."""
 import typer
+from pathlib import Path
 from ..templates.repo_templates import get_repo_templates
-from ..utils import handle_command_errors, create_files, validate_operation, success_message
+from ..utils import (
+    handle_command_errors,
+    validate_operation,
+    success_message,
+    file_creation_status,
+    ensure_directory
+)
 
 @handle_command_errors
 def create_repo(name: str) -> None:
     """Create repository implementation files."""
     files = get_repo_templates(name)
-    create_files(files)
+    with file_creation_status("Creating repository files...") as status:
+        for file_path, content in files.items():
+            path = Path(file_path)
+            ensure_directory(path)
+            path.write_text(content)
+            status.add_file(str(path))
     success_message(f"Created repository {name}")
 
 def repo(
