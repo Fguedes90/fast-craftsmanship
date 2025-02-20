@@ -17,6 +17,9 @@ def generate_commit_message(diff: str) -> str:
     For example, prompt an LLM with the diff and instruct it to output a conventional commit.
     """
     # Dummy implementation – in production, call your LLM API here.
+    # Get the actual diff content from the input parameter
+    print("\nAnalyzing changes in files...")
+    console.print(Panel(f"[bold]Git Diff:[/bold]\n{diff}", border_style="cyan"))
     return "feat: auto-generated commit message based on changes"
 
 def get_changed_files() -> list[str]:
@@ -46,7 +49,7 @@ def commit_interactive() -> None:
     for idx, file in enumerate(staged_files, start=1):
         console.print(f"{idx}. {file}")
 
-    console.print("\nOptions: [A] Keep all, [R] Remove all, [M] Modify selection manually")
+    console.print("\nOptions: [A] Commit all, [R] Remove all, [M] Selection manually")
     option = Prompt.ask("Select an option", choices=["A", "R", "M"], default="A")
 
     if option.upper() == "R":

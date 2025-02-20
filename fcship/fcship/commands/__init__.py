@@ -9,6 +9,7 @@ from .test import test
 from .project import project
 from .db import db
 from .verify import verify
+from .commit import commit
 
 # Command function type hint
 CommandFunction = Callable[..., Any]
@@ -22,7 +23,8 @@ COMMANDS: Dict[str, Tuple[CommandFunction, str]] = {
     "test": (test, "Create test files and run tests"),
     "project": (project, "Initialize and manage project structure"),
     "db": (db, "Manage database migrations"),
-    "verify": (verify, "Run code quality checks")
+    "verify": (verify, "Run code quality checks"),
+    "commit": (commit, "Tool to create commit messages")
 }
 
 __all__ = [
@@ -34,5 +36,6 @@ __all__ = [
     "test",
     "project",
     "db",
-    "verify"
+    "verify",
+    "commit"
 ]
