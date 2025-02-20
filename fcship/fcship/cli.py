@@ -3,6 +3,14 @@ import typer
 from rich.console import Console
 from . import __version__
 from .commands import COMMANDS
+from .commands.api import api
+from .commands.domain import domain
+from .commands.service import service
+from .commands.repo import repo
+from .commands.project import project
+from .commands.test import test
+from .commands.verify import verify
+from .commands.docs import docs
 
 console = Console()
 
@@ -38,6 +46,15 @@ def callback(
 # Register all commands
 for cmd_name, (cmd_func, help_text) in COMMANDS.items():
     app.command(help=help_text)(cmd_func)
+
+app.command()(api)
+app.command()(domain)
+app.command()(service)
+app.command()(repo)
+app.command()(project)
+app.command()(test)
+app.command()(verify)
+app.command()(docs)
 
 def main() -> None:
     """CLI entry point."""

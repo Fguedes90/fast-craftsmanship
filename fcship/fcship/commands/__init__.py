@@ -9,7 +9,7 @@ from .test import test
 from .project import project
 from .db import db
 from .verify import verify
-from .commit import commit
+from .commit.commit import commit
 
 # Command function type hint
 CommandFunction = Callable[..., Any]
