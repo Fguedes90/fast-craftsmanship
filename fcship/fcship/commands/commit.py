@@ -24,9 +24,7 @@ def get_changed_files() -> list[str]:
     result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=True)
     lines = result.stdout.splitlines()
     files = []
-    for line in lines:
-        # The file path starts at index 3 (ignoring the status flags)
-        files.append(line[3:].strip())
+    files.extend(line[3:].strip() for line in lines)
     return files
 
 @handle_command_errors
