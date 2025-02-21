@@ -13,9 +13,13 @@ def handle_command_errors(fn: Callable[..., T]) -> Callable[..., T]: ...
 @overload
 def handle_command_errors(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]: ...
 
+def _handle_error(e: Exception) -> None:
+    typer.echo(f"Error: {str(e)}")
+    raise typer.Exit(1)
+
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
     """Decorator to handle command errors gracefully using Expression's Try effect."""
-    
+
     @effect.try_[T]()
     async def async_wrapper(*args: Any, **kwargs: Any) -> T:
         try:
@@ -23,8 +27,7 @@ def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) ->
         except typer.Exit:
             raise
         except Exception as e:
-            typer.echo(f"Error: {str(e)}")
-            raise typer.Exit(1)
+            _handle_error(e)
 
     @effect.try_[T]()
     def sync_wrapper(*args: Any, **kwargs: Any) -> T:
@@ -33,7 +36,6 @@ def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) ->
         except typer.Exit:
             raise
         except Exception as e:
-            typer.echo(f"Error: {str(e)}")
-            raise typer.Exit(1)
+            _handle_error(e)
 
     return async_wrapper if asyncio.iscoroutinefunction(fn) else sync_wrapper

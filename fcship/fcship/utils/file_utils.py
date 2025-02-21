@@ -39,14 +39,9 @@ def file_creation_status(title: str = "Creating files...") -> Generator[FileCrea
     """Context manager for tracking and displaying file creation status."""
     tracker = FileCreationTracker()
     
-    with Live(
-        tracker.make_table(),
-        console=console,
-        refresh_per_second=4,
-    ) as live:
+    with Live(tracker.make_table(), console=console, refresh_per_second=4) as live:
         try:
             yield tracker
-            live.update(tracker.make_table())
         finally:
             live.update(tracker.make_table())
 
