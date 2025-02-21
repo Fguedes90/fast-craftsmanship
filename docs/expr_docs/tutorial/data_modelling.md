@@ -14,203 +14,198 @@ kernelspec:
 ---
 (tutorial_data_modelling)=
 
-# Data Modelling
+# Data Modeling with Expression Library
 
-With Expression and Python you can model your types using data-classes and
-tagged-unions. Let's start by importing some types we need before we begin.
+## Core Concepts
 
-```{code-cell} python
-from __future__ import annotations
+Expression library enables type-safe data modeling in Python using data classes and tagged unions.
 
+## Basic Data Modeling
+
+### Simple Types with Dataclasses
+
+```python
 from dataclasses import dataclass
-from typing import Generic, Tuple, TypeVar, final
+from typing import Literal
+from expression import tagged_union, case, tag
 
-from expression import case, tag, tagged_union
+# DO ✅
+@dataclass(frozen=True)  # Make immutable
+class User:
+    id: str
+    name: str
+    age: int
 
-_T = TypeVar("_T")
+# DON'T ❌
+class UserMutable:
+    def __init__(self, id: str, name: str, age: int):
+        self.id = id
+        self.name = name
+        self.age = age
+        
+# WHY: Frozen dataclasses ensure immutability and provide automatic __eq__, __hash__, etc.
 ```
 
-You define your record types using normal Python data-classes e.g:
+### Tagged Unions (Sum Types)
 
-```{code-cell} python
-@dataclass
-class Rectangle:
-    width: float
-    length: float
-
-
-@dataclass
-class Circle:
-    radius: float
-```
-
-You can use tagged unions to create sum-types. Tagged unions are similar to untagged
-unions (or just unions) but are safer and allows to be nested in ways that normal
-cannot. With tagged unions each of the union cases produces the same type which is why
-we use a static create method for to create each of the union cases.
-
-```{code-cell} python
+```python
+# DO ✅
 @tagged_union
-class Shape:
-    tag: Literal["rectangle", "circle"] = tag()
-
-    rectangle: Rectangle = case()
-    circle: Circle = case()
-
+class PaymentMethod:
+    tag: Literal["card", "bank_transfer"] = tag()
+    
+    card: tuple[str, str] = case()  # (card_number, expiry)
+    bank_transfer: str = case()     # account_number
+    
     @staticmethod
-    def Rectangle(width: float, length: float) -> Shape:
-        return Shape(rectangle=Rectangle(width, length))
-
+    def Card(number: str, expiry: str) -> 'PaymentMethod':
+        return PaymentMethod(card=(number, expiry))
+    
     @staticmethod
-    def Circle(radius: float) -> Shape:
-        return Shape(circle=Circle(radius))
+    def BankTransfer(account: str) -> 'PaymentMethod':
+        return PaymentMethod(bank_transfer=account)
+
+# DON'T ❌
+class LegacyPayment:
+    def __init__(self, type: str, data: dict):
+        self.type = type
+        self.data = data
+        
+# WHY: Tagged unions provide type safety and exhaustive pattern matching
 ```
 
-A more complex type modelling example:
+## Pattern Matching with Tagged Unions
 
-```{code-cell} python
-from __future__ import annotations
-from typing import Tuple, final
+```python
+# DO ✅
+def process_payment(method: PaymentMethod) -> str:
+    match method:
+        case PaymentMethod(tag="card", card=(number, _)):
+            return f"Processing card: {number[-4:]}"
+        case PaymentMethod(tag="bank_transfer", bank_transfer=account):
+            return f"Processing transfer to: {account}"
+            
+# DON'T ❌
+def process_legacy_payment(payment: LegacyPayment) -> str:
+    if payment.type == "card":
+        return f"Processing card: {payment.data['number']}"
+    elif payment.type == "transfer":
+        return f"Processing transfer: {payment.data['account']}"
+    else:
+        raise ValueError("Unknown payment type")
 
-from expression import case, tag, tagged_union
-
-
-@tagged_union
-class Suit:
-    tag: Literal["spades", "hearts", "clubs", "diamonds"] = tag()
-
-    spades: Literal[True] = case()
-    hearts: Literal[True] = case()
-    clubs: Literal[True] = case()
-    diamonds: Literal[True] = case()
-
-    @staticmethod
-    def Spades() -> Suit:
-        return Suit(spades=True)
-
-    @staticmethod
-    def Hearts() -> Suit:
-        return Suit(hearts=True)
-
-    @staticmethod
-    def Clubs() -> Suit:
-        return Suit(clubs=True)
-
-    @staticmethod
-    def Diamonds() -> Suit:
-        return Suit(diamonds=True)
-
-@tagged_union
-class Face:
-    tag: Literal["jack", "queen", "king", "ace"] = tag()
-
-    jack: Literal[True] = case()
-    queen: Literal[True] = case()
-    king: Literal[True] = case()
-    ace: Literal[True] = case()
-
-    @staticmethod
-    def Jack() -> Face:
-        return Face(jack=True)
-
-    @staticmethod
-    def Queen() -> Face:
-        return Face(queen=True)
-
-    @staticmethod
-    def King() -> Face:
-        return Face(king=True)
-
-    @staticmethod
-    def Ace() -> Face:
-        return Face(ace=True)
-
-
-@tagged_union
-class Card:
-    tag: Literal["value", "face", "joker"] = tag()
-
-    face: tuple[Suit, Face] = case()
-    value: tuple[Suit, int] = case()
-    joker: Literal[True] = case()
-
-    @staticmethod
-    def Face(suit: Suit, face: Face) -> Card:
-        return Card(face=(suit, face))
-
-    @staticmethod
-    def Value(suit: Suit, value: int) -> Card:
-        if value < 1 or value > 10:
-            raise ValueError("Value must be between 1 and 10")
-        return Card(value=(suit, value))
-
-    @staticmethod
-    def Joker() -> Card:
-        return Card(joker=True)
-
-
-jack_of_hearts = Card.Face(suit=Suit.Hearts(), face=Face.Jack())
-three_of_clubs = Card.Value(suit=Suit.Clubs(), value=3)
-joker = Card.Joker()
+# WHY: Pattern matching ensures all cases are handled and provides better type inference
 ```
 
-We can now use our types with pattern matching to create our domain logic:
+## Advanced Patterns
 
-```{code-cell} python
-def calculate_value(card: Card) -> int:
-    match card:
-        case Card(tag="face", face=(Suit(spades=True), Face(queen=True))):
-            return 40
-        case Card(tag="face", face=(_suit, Face(ace=True))):
-            return 15
-        case Card(tag="face", face=(_suit, _face)):
-            return 10
-        case Card(tag="value", value=(_suit, value)):
-            return value
-        case Card(tag="joker", joker=True):
-            return 0
-        case _:
-            raise AssertionError("Should not match")
+### Single Case Tagged Unions
 
-
-rummy_score = calculate_value(jack_of_hearts)
-print("Score: ", rummy_score)
-
-rummy_score = calculate_value(three_of_clubs)
-print("Score: ", rummy_score)
-
-rummy_score = calculate_value(joker)
-print("Score: ", rummy_score)
-```
-
-## Single case tagged unions
-
-You can also use tagged unions to create single case tagged unions. This is useful
-when you want to create a type that is different from the underlying type. For example
-you may want to create a type that is a string but is a different type to a normal
-string.
-
-For single case tagged unions we don't need to define the tag, just the single case.
-
-```{code-cell} python
+```python
+# DO ✅
 @tagged_union(frozen=True, repr=False)
-class SecurePassword:
-    password: str = case()
-
-    # Override __str__ and __repr__ to make sure we don't leak the password in logs
+class Email:
+    value: str = case()
+    
+    def __post_init__(self):
+        if "@" not in self.value:
+            raise ValueError("Invalid email")
+            
     def __str__(self) -> str:
-        return "********"
+        return self.value
 
-    def __repr__(self) -> str:
-        return "SecurePassword(password='********')"
+# DON'T ❌
+class EmailString(str):
+    def __new__(cls, value: str):
+        if "@" not in value:
+            raise ValueError("Invalid email")
+        return super().__new__(cls, value)
 
-password = SecurePassword(password="secret")
-match password:
-    case SecurePassword(password=p):
-        assert p == "secret"
-
+# WHY: Tagged unions provide better type safety and validation
 ```
 
-This will make sure that the password is not leaked in logs or when printed to the
-console, and that we don't assign a password to a normal string anywhere in our code.
+### Complex Data Models
+
+```python
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# DO ✅
+@tagged_union
+class Result(Generic[T]):
+    tag: Literal["success", "error"] = tag()
+    
+    success: T = case()
+    error: str = case()
+    
+    @staticmethod
+    def Success(value: T) -> 'Result[T]':
+        return Result(success=value)
+        
+    @staticmethod
+    def Error(msg: str) -> 'Result[T]':
+        return Result(error=msg)
+
+def process_data(data: dict) -> Result[User]:
+    build_user = lambda data: User(**data)
+    
+    if "id" not in data:
+        return Result.Error("Missing id")
+    return Result.Success(build_user(data))
+
+# DON'T ❌
+def process_data_unsafe(data: dict) -> tuple[bool, User | str]:
+    if "id" not in data:
+        return False, "Missing id"
+    return True, User(**data)
+
+# WHY: Generic tagged unions provide type-safe error handling
+```
+
+## Best Practices
+
+### DO ✅
+- Use frozen dataclasses for immutable value types
+- Use tagged unions for sum types
+- Implement static factory methods for union cases
+- Use pattern matching for type-safe branching
+- Make your types self-validating
+
+### DON'T ❌
+- Use mutable classes for data models
+- Mix different validation approaches
+- Use strings or dictionaries for type discrimination
+- Return mixed type tuples for results
+
+## Testing Example
+
+```python
+def test_payment_processing():
+    # Given
+    card = PaymentMethod.Card("1234-5678-9012-3456", "12/25")
+    transfer = PaymentMethod.BankTransfer("GB123456789")
+    
+    # When
+    extract_last_four = lambda result: "3456" in result
+    contains_account = lambda result: "GB123456789" in result
+    
+    card_result = process_payment(card)
+    transfer_result = process_payment(transfer)
+    
+    # Then
+    assert extract_last_four(card_result)
+    assert contains_account(transfer_result)
+
+def test_email_validation():
+    # Valid case
+    email = Email(value="test@example.com")
+    assert str(email) == "test@example.com"
+    
+    # Invalid case
+    try:
+        Email(value="invalid-email")
+        assert False, "Should have raised ValueError"
+    except ValueError:
+        pass  # Expected
 

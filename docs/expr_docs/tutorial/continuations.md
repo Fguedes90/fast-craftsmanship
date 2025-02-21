@@ -1,267 +1,170 @@
----
-jupytext:
-  cell_metadata_filter: -all
-  formats: md:myst
-  text_representation:
-    extension: .md
-    format_name: myst
-    format_version: 0.13
-    jupytext_version: 1.11.5
-kernelspec:
-  display_name: Python 3
-  language: python
-  name: python3
----
-(tutorial_continuations)=
+# Callbacks and Continuations in Python
 
-# Callbacks and Continuations
+## Core Concepts
 
-> Don't call me. I'll call you.
-
-```python
-import threading
-
-def long_running(callback):
-    def done():
-        result = 42
-        callback(result)
-    timer = threading.Timer(5.0, done)
-    timer.start()
-
-long_running(print)
-```
+Continuations are a way to handle asynchronous operations and control flow in functional programming. They represent "what happens next" in program execution.
 
 ## Continuation Passing Style (CPS)
 
-This is a functional programming style where you don’t return any values from your
-functions. Instead of returning the result, you pass a continuation function that will
-be applied to the result.
+### Basic Example
 
 ```python
-import math
+# DO ✅
+from expression.core import pipe
 
-def add(a, b):
-    return a + b
-
-def square(x):
-    return x * x
-
-def sqrt(x):
-    return math.sqrt(x)
-
-def pythagoras(a, b):
-    return sqrt(add(square(a), square(b)))
-```
-
-```python
-result = pythagoras(2,3)
-print(result)
-```
-
-```python
-import math
-
-def add(a, b, cont):
-    cont(a + b)
-
-def square(x, cont):
-    cont(x * x)
-
-def sqrt(x, cont):
-    cont(math.sqrt(x))
-
-# Pythagoras rewritten in CPS
-def pythagoras(a, b, cont):
-    square(a, (lambda aa:
-        square(b, (lambda bb:
-            add(aa, bb, (lambda aabb:
-                sqrt(aabb, (lambda result:
-                    cont(result)
-                ))
-            ))
-        ))
-    ))
-```
-
-```python
-pythagoras(2, 3, print)
-```
-
-## Nice, but unreadable. Kind of ....
-
-How can we do better? We're not really used to pass in continuations. We like to return our results!
-
-> Could we perhaps use currying?
-
-So instead of taking a continuation, we could return a function that takes a continuation. It's basically the exact same thing ... just moving the `:`.
-
-```python
-import math
-
-def add(a, b):
-    return lambda cont: cont(a + b)
-
-def square(x):
-    return lambda cont: cont(x * x)
-
-def sqrt(x):
-    return lambda cont: cont(math.sqrt(x))
-
-def pythagoras(a, b):
-    def then(cont):
-        then = square(a)
-        def next(aa):
-            then = square(b)
-            def next(bb):
-                then = add(aa, bb)
-                def next(aabb):
-                    then = sqrt(aabb)
-                    def next(result):
-                        cont(result)
-                    then(next)
-                then(next)
-            then(next)
-        then(next)
-    return then
-
-result = pythagoras(2,3)
-result(print)
-```
-
-## Now what? Looks slightly better, kind of ...
-
-> Could we perhaps use types to make better abstractions?
-
-In Python we create new types using classes, so let's create a class to encapsulte the CPS function `(a -> r) -> r`.
-
-Ref: https://wiki.haskell.org/MonadCont_under_the_hood
-
-```python
-class Cont:
-    def __init__(self, cps):
-        self.__cps = cps # fn: ('a -> 'r) -> 'r
-
-    @staticmethod
-    def rtn(a):
-        return Cont(lambda cont: cont(a))
-
-    def run(self, cont):
-        self.__cps(cont)
-
-    def then(self, fn):
-        # Cont <| fun c -> run cont (fun a -> run (fn a) c )
-        return Cont(lambda c: self.run(lambda a: fn(a).run(c)))
-```
-
-```python
-import math
-
-def add(a, b):
-    return Cont.rtn(a + b)
-
-def square(x):
-    return Cont.rtn(x * x)
-
-def sqrt(x):
-    return Cont.rtn(math.sqrt(x))
-
-def pythagoras(a, b):
-    return square(a).then(
-        lambda aa: square(b).then(
-            lambda bb: add(aa, bb).then(
-                lambda aabb: sqrt(aabb)
-            )
-        )
+def process_async(value, on_complete):
+    double_value = lambda x: x * 2
+    increment_value = lambda x: x + 1
+    
+    result = pipe(
+        value,
+        double_value,
+        increment_value,
+        on_complete
     )
+    return result
+
+# DON'T ❌
+def nested_callbacks(value, on_complete):
+    def step1(x):
+        def step2(y):
+            on_complete(y + 1)
+        step2(x * 2)
+    step1(value)
+
+# WHY: Pipe creates cleaner, more readable async operations without callback hell
 ```
 
-```python
-result = pythagoras(2, 3)
-result.run(print)
-```
+## Modern Continuation Handling
+
+### Using Expression Library
 
 ```python
+from expression import Effect
+
+# DO ✅
+def fetch_user_data(user_id: str) -> Effect:
+    return Effect.success({"id": user_id, "name": "John"})
+
+def process_user(user_data: dict) -> Effect:
+    return Effect.success(f"Processed {user_data['name']}")
+
+# Chain continuations cleanly
+def handle_user(user_id: str) -> Effect:
+    process_user_data = lambda data: process_user(data)
+    
+    return (
+        fetch_user_data(user_id)
+        .map(process_user_data)
+    )
+
+# DON'T ❌
+def callback_hell(user_id: str, callback):
+    def on_fetch(user_data):
+        def on_process(result):
+            callback(result)
+        process_user(user_data, on_process)
+    fetch_user_data(user_id, on_fetch)
+
+# WHY: Effect provides type-safe, composable continuations
+```
+
+## Async/Await Integration
+
+```python
+from expression import Effect
 import asyncio
 
-class Cont:
-    def __init__(self, cps):
-        self.__cps = cps # fn: ('a -> 'r) -> 'r
+# DO ✅
+async def async_operation():
+    effect = Effect.success(42)
+    result = await effect.to_awaitable()
+    return result
 
-    @staticmethod
-    def rtn(a):
-        return Cont(lambda cont: cont(a))
+# DON'T ❌
+def manual_promise_chain():
+    promise = Promise()
+    promise.then(lambda x: x * 2).then(print)
+    return promise
 
-    def run(self, cont):
-        self.__cps(cont)
-
-    def __await__(self):
-        loop = asyncio.get_event_loop()
-        future = loop.create_future()
-        def done(value):
-            future.set_result(value)
-        self.run(done)
-        return iter(future)
-
-    def then(self, fn):
-        # Cont <| fun c -> run cont (fun a -> run (fn a) c )
-        return Cont(lambda c: self.run(lambda a: (fn(a).run(c))))
+# WHY: Native async/await syntax is more readable and maintainable
 ```
+
+## Best Practices
+
+### DO ✅
+- Use Effect for composable continuations
+- Leverage pipe for sequential operations
+- Use async/await with Effect.to_awaitable()
+- Keep continuation chains flat and readable
+
+### DON'T ❌
+- Nest callbacks deeply
+- Mix different continuation styles
+- Use raw promises when Effect is available
+- Create complex continuation hierarchies
+
+## Testing Continuations
 
 ```python
-import math
+from expression import Effect
+import pytest
 
-def add(a, b):
-    return Cont.rtn(a + b)
+# DO ✅
+def test_user_processing():
+    effect = handle_user("user123")
+    
+    # Test synchronously
+    result = effect.run()
+    assert "Processed John" in result
 
-def square(x):
-    return Cont.rtn(x * x)
+# DON'T ❌
+def test_with_callbacks(done):
+    def callback(result):
+        try:
+            assert "Processed" in result
+            done()
+        except Exception as e:
+            done(e)
+    
+    handle_user_callback("user123", callback)
 
-def sqrt(x):
-    return Cont.rtn(math.sqrt(x))
-
-async def pythagoras(a, b):
-    aa = await square(a)
-    bb = await square(b)
-    aabb = await add(aa, bb)
-    ab = await sqrt(aabb)
-
-    return ab
-
-result = await pythagoras(2,3)
-print(result)
+# WHY: Effect makes testing asynchronous code straightforward and deterministic
 ```
 
-## Conclusion
+## Key Benefits
 
-Async / await is basically just syntactic sugar for working with effects such as
-callbacks and continuations
+1. Type Safety
+2. Composability
+3. Better Error Handling
+4. Testability
+5. Integration with async/await
 
-How do we know that the "normal" syntax of a programming language is not compiled to
-continuations under the hood? Maybe we have been programming with continuations all
-along?
-
-
-## The Mother of all Monads
-
-> https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/the-mother-of-all-monads
+## Practice Example
 
 ```python
-from typing_extensions import Protocol, runtime_checkable
-from abc import abstractmethod
+from expression import Effect
 
-@runtime_checkable
-class Monad(Protocol):
-    @staticmethod
-    @abstractmethod
-    def rtn(a):
-        raise NotImplementedError
+def validate(data: dict) -> Effect:
+    return Effect.success(data) if data.get("id") else Effect.fail("Invalid data")
 
-    @abstractmethod
-    def then(self, fn):
-        raise NotImplementedError
-```
+def save(data: dict) -> Effect:
+    return Effect.success(f"Saved {data['id']}")
 
-```python
-assert issubclass(Cont, Monad)
-print("Yey!!")
-```
+# DO ✅
+def process_data(data: dict) -> Effect:
+    save_data = lambda x: save(x)
+    format_success = lambda x: f"Success: {x}"
+    format_error = lambda err: f"Error: {err}"
+    
+    return (
+        validate(data)
+        .map(save_data)
+        .map(format_success)
+        .catch(format_error)
+    )
+
+# Test
+data = {"id": "123", "value": "test"}
+result = process_data(data).run()
+assert "Success" in result

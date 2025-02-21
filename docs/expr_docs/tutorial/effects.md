@@ -132,63 +132,197 @@ Are they the same? We really don't know. We are not allowed to look inside the b
 io.run(world=0)
 ```
 
-## Effects
+# Effects in Python with Expression Library
 
-Effects are not the same as side-effects. Effects are just values with a context. The context is different for every effect.
+## Core Concepts
 
-* Option
-* Result
-* Block
-* Observable
-* Async
-* AsyncObservable
-* Io
-* ...
+Effects represent computations that might fail or have side effects. The Expression library provides a powerful Effect type for handling these scenarios safely.
 
-## Effects in Expression
-
-Expression have a nice way of dealing with effects and lets you safely work with wrapped values wihout having to error check:
+## Basic Effects Usage
 
 ```python
-from expression import effect, Option, Some, Nothing
+from expression import Effect
+from typing import Optional
 
+# DO ✅
+def get_user(user_id: str) -> Effect[dict]:
+    if not user_id:
+        return Effect.fail("Invalid user id")
+    return Effect.success({"id": user_id, "name": "John"})
 
-def divide(a: float, divisor: float) -> Option[float]:
-    try:
-        return Some(a / divisor)
-    except ZeroDivisionError:
-        return Nothing
+def validate_age(user: dict) -> Effect[dict]:
+    age = user.get("age")
+    if not age or age < 18:
+        return Effect.fail("User must be 18 or older")
+    return Effect.success(user)
 
+# Chain effects elegantly
+def process_user(user_id: str) -> Effect[dict]:
+    return (
+        get_user(user_id)
+        .bind(validate_age)
+    )
 
-@effect.option[float]()
-def comp(x: float):
-    result: float = yield from divide(42, x)
-    result += 32
-    print(f"The result is {result}")
-    return result
+# DON'T ❌
+def process_user_unsafe(user_id: str) -> Optional[dict]:
+    if not user_id:
+        return None
+    user = {"id": user_id, "name": "John"}
+    if user.get("age", 0) < 18:
+        return None
+    return user
 
-
-comp(42)
+# WHY: Effects provide clear error handling and composability
 ```
 
-## Living on the edge ...
+## Error Handling
 
-We have seen that we can create other wrapped worlds such as sequences, lists, results
-and options. On the edge of such a world you will find other objects that we usually do
-not want to work with:
+```python
+from typing import Union
 
-* None,
-* Exceptions
-* Callbacks, continuations and `run`
-* Iterators and `__iter__`
-* Observers and `subscribe`
+# DO ✅
+def divide(a: float, b: float) -> Effect[float]:
+    if b == 0:
+        return Effect.fail("Division by zero")
+    return Effect.success(a / b)
 
-## Summary
+# Chain with error handling
+def complex_calculation(x: float, y: float) -> Effect[float]:
+    double_result = lambda result: result * 2
+    handle_error = lambda _: Effect.success(0.0)  # Fallback value
+    
+    return (
+        divide(x, y)
+        .map(double_result)
+        .catch(handle_error)
+    )
 
-- Effects are what we call *elevated* worlds
-- An elevated world is a strange place where basically anything is possible.
-- Two elevated worlds may e.g `Result`, `Option`, `Map` and `Io` may be completely
-  different, but they still have the same basic structure.
-- But still every normal value has a corresponding elevated value.
-- Every function has a corresponding elevated function.
+# DON'T ❌
+def divide_unsafe(a: float, b: float) -> Union[float, str]:
+    try:
+        if b == 0:
+            return "Division by zero"
+        return a / b
+    except Exception as e:
+        return str(e)
+
+# WHY: Effects make error paths explicit and composable
+```
+
+## Async Effects
+
+```python
+from expression import Effect
+import asyncio
+
+# DO ✅
+async def fetch_data(url: str) -> Effect[dict]:
+    return Effect.success({"data": "example"})
+
+async def process_data(data: dict) -> Effect[str]:
+    return Effect.success(f"Processed: {data['data']}")
+
+async def handle_request(url: str) -> Effect[str]:
+    return (
+        await fetch_data(url)
+        .bind(process_data)
+    ).to_awaitable()
+
+# DON'T ❌
+async def handle_request_unsafe(url: str) -> str:
+    try:
+        data = await fetch_data_unsafe(url)
+        if data is None:
+            return "Error fetching data"
+        return await process_data_unsafe(data)
+    except Exception as e:
+        return str(e)
+
+# WHY: Effects make async code more predictable and easier to test
+```
+
+## Best Practices
+
+### DO ✅
+- Use Effect for operations that might fail
+- Chain effects with bind and map
+- Handle errors explicitly with catch
+- Convert to/from async with to_awaitable()
+- Use Effect.success/fail for clear outcomes
+
+### DON'T ❌
+- Mix Effect with try/except blocks
+- Return None or error strings
+- Use raw exceptions for control flow
+- Mix Effect with Optional types
+- Nest effects unnecessarily
+
+## Testing Effects
+
+```python
+def test_user_processing():
+    # Success case
+    result = process_user("123").run()
+    assert result.is_success()
+    assert result.value["id"] == "123"
+
+    # Failure case
+    result = process_user("").run()
+    assert result.is_failure()
+    assert "Invalid user id" in str(result.error)
+
+def test_complex_calculation():
+    # Success case
+    result = complex_calculation(10, 2).run()
+    assert result.is_success()
+    assert result.value == 10.0
+
+    # Failure with fallback
+    result = complex_calculation(10, 0).run()
+    assert result.is_success()
+    assert result.value == 0.0
+```
+
+## Practical Example
+
+```python
+from expression import Effect
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass(frozen=True)
+class User:
+    id: str
+    name: str
+    age: Optional[int] = None
+
+# DO ✅
+def create_user(data: dict) -> Effect[User]:
+    validate_user_age = lambda user: (
+        Effect.fail("Invalid age")
+        if user.age is not None and user.age < 0
+        else Effect.success(user)
+    )
+
+    return (
+        Effect.catch(lambda: User(**data))
+        .bind(validate_user_age)
+    )
+
+def update_user(user: User, updates: dict) -> Effect[User]:
+    merge_user_data = lambda: {**user.__dict__, **updates}
+    
+    return (
+        Effect.success(merge_user_data())
+        .bind(lambda data: create_user(data))
+    )
+
+# Usage example
+user_data = {"id": "123", "name": "John", "age": 25}
+update_age = {"age": 26}
+
+result = (
+    create_user(user_data)
+    .bind(lambda user: update_user(user, update_age))
+).run()
 

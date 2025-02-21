@@ -1,141 +1,227 @@
-# Python Functional Guide: Desenvolvendo Aplicações Altamente Funcionais
+# Python Functional Programming Guide with Expression Library
 
-Este guia demonstra como construir aplicações em Python utilizando a abordagem funcional por meio da biblioteca Expression e de nossos helpers customizados. Aqui você verá exemplos de validação, transformação de dados, manipulação de arquivos, tratamento de erros e a composição das operações em uma pipeline funcional.
+## Core Principles
 
----
+1. Immutability
+2. Pure Functions
+3. Function Composition
+4. Type Safety
 
-## 1. Conceitos Básicos
+## Basic Functional Patterns
 
-- **Result & Option:** Utilizados para trabalhar com operações “seguras” sem exceções dispersas.
-- **Effects:** Capturam erros e permitem compor funções sem a necessidade de blocos try/except em cada função.
-- **Composition & Pipelining:** Encadeie funções de forma legível e robusta.
-- **Helpers Customizados:** Funções como `lift_option`, `ensure_type`, `map_type`, e decorators de erro, que auxiliam na escrita de código funcional.
-
----
-
-## 2. Exemplos Práticos
-
-### 2.1 Validação e Transformação de Dados
-
-Utilize os helpers de validação e transformação para compor pipelines robustos:
+### Pure Functions and Immutability
 
 ```python
-from fcship.fcship.utils.type_utils import ensure_type, map_type
-from fcship.fcship.utils/validation import validate, compose_validations
-from expression import Ok, Error, Result
+from expression.collections import Block, Map
+from dataclasses import dataclass
+from typing import Sequence
 
-def validate_and_transform_age(age_input: str) -> Result[int, Exception]:
-    # Converte a entrada para inteiro, garantindo que o dado esteja correto
-    age = ensure_type(age_input, int, "number", lambda x: str(x).isdigit())
+# DO ✅
+@dataclass(frozen=True)
+class Score:
+    value: int
+    subject: str
 
-    # Validação: deve ser positivo e realista
-    validate_positive = validate(lambda x: x > 0, "Age must be positive")
-    validate_reasonable = validate(lambda x: x < 150, "Age seems unrealistic")
-    validate_age = compose_validations(validate_positive, validate_reasonable)
+def calculate_average(scores: Block[Score]) -> float:
+    extract_value = lambda s: s.value
+    return scores.map(extract_value).average()
 
-    return validate_age(age)
+# Process data without mutations
+def filter_high_scores(scores: Block[Score]) -> Block[Score]:
+    is_high_score = lambda s: s.value >= 90
+    return scores.filter(is_high_score)
 
-# Uso exemplo:
-result = validate_and_transform_age("30")
-if result.is_ok():
-    print(f"Idade válida: {result.ok}")
-else:
-    print(f"Erro: {result.error}")
+# DON'T ❌
+class MutableScore:
+    def __init__(self, value: int, subject: str):
+        self.value = value
+        self.subject = subject
+
+def update_scores(scores: list[MutableScore]) -> None:
+    for score in scores:
+        score.value += 5  # Mutation!
+
+# WHY: Pure functions and immutable data prevent side effects
 ```
 
----
-
-### 2.2 Manipulação de Options e Levantamento para Result
-
-Utilize `lift_option` para converter funções que retornam Option em funções que retornam Result:
+### Function Composition
 
 ```python
-from fcship.fcship.utils.functional import lift_option
-from expression import Some, Nothing
+from expression.core import pipe, compose
+from typing import Callable
 
-def get_optional_value(x: int):
-    return Some(x) if x > 0 else Nothing
+# DO ✅
+def normalize_string(s: str) -> str:
+    return s.lower().strip()
 
-# Levanta a função para retornar um Result
-safe_get_value = lift_option(get_optional_value)
+def validate_length(s: str) -> bool:
+    return 3 <= len(s) <= 50
 
-result = safe_get_value(10)
-if result.is_ok():
-    print("Valor obtido:", result.ok)
-else:
-    print("Erro:", result.error)
+def process_input(validate: Callable[[str], bool]) -> Callable[[str], str]:
+    process_text = lambda s: s if validate(s) else ""
+    
+    def processor(text: str) -> str:
+        return pipe(
+            text,
+            normalize_string,
+            process_text
+        )
+    return processor
+
+validate_name = process_input(validate_length)
+assert validate_name("  John  ") == "john"
+
+# DON'T ❌
+def process_input_imperative(text: str) -> str:
+    text = text.lower()
+    text = text.strip()
+    if not (3 <= len(text) <= 50):
+        return ""
+    return text
+
+# WHY: Function composition creates reusable, testable pipelines
 ```
 
----
-
-### 2.3 Exibindo Mensagens na Interface (UI)
-
-Utilize os helpers de UI para exibir mensagens no terminal com Rich:
+### Higher-Order Functions
 
 ```python
-from fcship.fcship.utils.ui import success_message, error_message, format_message
+from typing import TypeVar, Callable
+from expression import Option, Some, Nothing
 
-# Exemplo de mensagem de sucesso
-msg_result = success_message("Operação realizada com sucesso!")
-if msg_result.is_ok():
-    print("Mensagem exibida com sucesso.")
-else:
-    print(f"Erro ao exibir mensagem: {msg_result.error}")
+T = TypeVar('T')
+U = TypeVar('U')
 
-# Exemplo de formatação de mensagem composta
-formatted = format_message(["Parte 1", "Parte 2", "Detalhes adicionais"])
-if formatted.is_ok():
-    print("Mensagem formatada:", formatted.ok)
+# DO ✅
+def safe_transform(f: Callable[[T], U]) -> Callable[[T], Option[U]]:
+    def wrapper(x: T) -> Option[U]:
+        try:
+            return Some(f(x))
+        except Exception:
+            return Nothing
+    return wrapper
+
+safe_int = safe_transform(int)
+assert safe_int("123").is_some()
+assert safe_int("abc").is_none()
+
+# DON'T ❌
+def transform_with_default(x: str, default: int) -> int:
+    try:
+        return int(x)
+    except ValueError:
+        return default
+
+# WHY: Higher-order functions make error handling more composable
 ```
 
----
+## Advanced Patterns
 
-### 2.4 Tratamento de Erros com Decoradores
-
-Utilize o decorator `handle_command_errors` para centralizar o tratamento de exceções:
+### Railway-Oriented Programming
 
 ```python
-from fcship.fcship.utils.error_handling import handle_command_errors
+from expression import Result, Success, Failure
+from typing import Any
 
-@handle_command_errors
-def perform_operation(data: int) -> int:
-    # Exemplo: Falha se o dado for negativo
-    if data < 0:
-        raise ValueError("Data must be non-negative")
-    return data * 2
+# DO ✅
+def validate_age(age: Any) -> Result[int]:
+    return (
+        safe_transform(int)(age)
+        .to_result("Invalid age format")
+        .bind(lambda n: 
+            Success(n) if 0 <= n <= 120
+            else Failure("Age must be between 0 and 120")
+        )
+    )
 
-try:
-    print("Resultado:", perform_operation(-5))
-except SystemExit:
-    print("Operação terminou com erro tratado.")
+def validate_name(name: Any) -> Result[str]:
+    return (
+        Some(str(name))
+        .to_result("Invalid name")
+        .bind(lambda n:
+            Success(n) if n.strip()
+            else Failure("Name cannot be empty")
+        )
+    )
+
+# Create validated user
+def create_validated_user(data: dict) -> Result[dict]:
+    return (
+        validate_name(data.get("name"))
+        .bind(lambda name:
+            validate_age(data.get("age"))
+            .map(lambda age: {"name": name, "age": age})
+        )
+    )
+
+# DON'T ❌
+def create_user_unsafe(data: dict) -> dict:
+    if "name" not in data or not data["name"].strip():
+        raise ValueError("Invalid name")
+    if "age" not in data:
+        raise ValueError("Missing age")
+    try:
+        age = int(data["age"])
+        if not (0 <= age <= 120):
+            raise ValueError("Invalid age range")
+    except ValueError:
+        raise ValueError("Invalid age format")
+    return {"name": data["name"], "age": age}
+
+# WHY: Railway-oriented programming makes error handling explicit and composable
 ```
 
----
+## Best Practices
 
-### 2.5 Manipulação de Arquivos com File Creation Tracker
+### DO ✅
+- Use frozen dataclasses for data structures
+- Compose functions with pipe and compose
+- Handle errors with Option and Result
+- Use type hints consistently
+- Write small, focused functions
 
-Utilize os helpers de file handling para criar arquivos de forma funcional e monitorada:
+### DON'T ❌
+- Mutate data structures
+- Use exceptions for control flow
+- Write functions with side effects
+- Mix functional and imperative styles
+- Create complex class hierarchies
+
+## Testing Example
 
 ```python
-from pathlib import Path
-from fcship.fcship.utils.file_utils import create_file, FileCreationTracker
-from expression import Try
+from expression.collections import Block
 
-# Define o caminho e conteúdo para o arquivo
-file_path = Path("output") / "sample.txt"
-content = "Conteúdo do arquivo gerado funcionalmente."
+def test_score_processing():
+    # Given
+    scores = Block.of_seq([
+        Score(95, "Math"),
+        Score(85, "English"),
+        Score(92, "Science")
+    ])
+    
+    # When
+    check_high_score = lambda score: score >= 90
+    high_scores = filter_high_scores(scores)
+    avg = calculate_average(scores)
+    
+    # Then
+    assert len(high_scores) == 2
+    assert 90 <= avg <= 91
 
-tracker = FileCreationTracker()
+def test_input_processing():
+    processor = process_input(validate_length)
+    
+    assert processor("  TEST  ") == "test"
+    assert processor("a") == ""  # Too short
+    assert processor("  ") == ""  # Empty after normalization
 
-# A função create_file usa um efeito (try_) que lança exceção em caso de falha
-Try.apply(lambda: create_file(file_path, content, tracker))
-print("Arquivos criados:", tracker.files)
-```
-
----
-
-## 3. Conclusão
-
-Ao unir os conceitos de Result, Option, Effects e a composição funcional, você pode construir pipelines robustas, mantendo o código fácil de testar, modificar e manter. Utilize estas técnicas para garantir que cada operação seja validada e que os erros sejam tratados de forma centralizada – promovendo um design mais funcional e composto.
-
-Explore e adapte os exemplos deste guia para as necessidades do seu projeto, integrando os helpers customizados e a biblioteca Expression para escrever código verdadeiramente funcional em Python.
+def test_validated_user():
+    # Valid data
+    good_data = {"name": "John", "age": "25"}
+    result = create_validated_user(good_data)
+    assert result.is_success()
+    
+    # Invalid data
+    bad_data = {"name": "", "age": "invalid"}
+    result = create_validated_user(bad_data)
+    assert result.is_failure()

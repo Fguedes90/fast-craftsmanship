@@ -30,84 +30,193 @@ calculus. This is true for all functional programming languages, a class that in
 Lisp, Scheme, Haskell, and ML (OCaml, F#).
 
 
-## Lambda calculus in Python
+# Lambda Calculus in Python with Expression Library
+
+## Core Concepts
+
+Lambda calculus forms the foundation of functional programming. The Expression library provides tools to work with lambda functions effectively.
+
+## Basic Lambda Functions
 
 ```python
-identity = lambda x: x
+from expression.core import curry, compose, pipe
+from typing import Callable
 
-zero = lambda f: identity
-one = lambda f: lambda x: f(x)
-two = lambda f: lambda x: f(f(x))
-three = lambda f: lambda x: f(f(f(x)))
+# DO ✅
+# Simple, focused lambda functions with descriptive names
+add_numbers = lambda x, y: x + y
+double_number = lambda x: x * 2
+check_even = lambda x: x % 2 == 0
+
+# Curried functions for partial application
+@curry
+def multiply(x: int, y: int) -> int:
+    return x * y
+
+double_nums = multiply(2)  # Creates a new function
+assert double_nums(4) == 8
+
+# DON'T ❌
+# Complex, multi-purpose lambdas
+complex_lambda = lambda x, y: (x * 2 if isinstance(x, int) else str(x)) + y
+
+# WHY: Simple lambdas are easier to understand and compose
 ```
+
+## Function Composition
 
 ```python
-# Don't repeat yourself (DRY)
-succ = lambda numeral: lambda f: lambda x: f(numeral(f)(x))
-two = succ(one)
-three = succ(two)
+# DO ✅
+# Compose functions clearly
+increment_number = lambda x: x + 1
 
-three(lambda x: x+1)(0)
+# Using pipe
+result = pipe(
+    5,
+    increment_number,  # 6
+    double_number,     # 12
+    str               # "12"
+)
+
+# Using compose
+number_to_str = compose(str, double_number, increment_number)
+assert number_to_str(5) == "12"
+
+# DON'T ❌
+# Nested function calls
+def process_number(x):
+    return str(double(increment(x)))
+
+# WHY: Composition makes data flow explicit and readable
 ```
 
-# Tools of lambda calculus
-
-Substitution rules of programming
-
-- **α-conversion:** changing bound variables (alpha);
-- **β-reduction:** applying functions to their arguments (beta);
-- **η-conversion:** which captures a notion of extensionality (eta).
-
-
-## Alpha Conversion
-
-Alpha-conversion is about renaming of bound variables
+## Higher-Order Functions
 
 ```python
-(lambda x: x)(42) == (lambda y: y)(42) # Renaming
+from expression.collections import Block
+
+# DO ✅
+def create_validator(min_val: int, max_val: int) -> Callable[[int], bool]:
+    return lambda x: min_val <= x <= max_val
+
+is_adult = create_validator(18, 120)
+assert is_adult(25) == True
+assert is_adult(15) == False
+
+# Filter with composed predicates
+check_not = lambda pred: lambda x: not pred(x)
+
+numbers = Block.of_seq(range(10))
+evens = numbers.filter(check_even)
+odds = numbers.filter(check_not(check_even))
+
+# DON'T ❌
+def validate_age(age: int) -> bool:
+    if age < 18:
+        return False
+    if age > 120:
+        return False
+    return True
+
+# WHY: Higher-order functions enable flexible, reusable logic
 ```
 
-## Beta Reduction
+## Practical Patterns
 
-A beta reduction (also written β reduction) is the process of calculating a result from
-the application of a function to an expression.
-
-((λn.n×2) 7) → 7×2.
-
+### Function Factories
 
 ```python
-(lambda n: n*2)(7) == 7*2
+# DO ✅
+def create_formatter(prefix: str) -> Callable[[str], str]:
+    return lambda text: f"{prefix}: {text}"
+
+log_error = create_formatter("ERROR")
+log_info = create_formatter("INFO")
+
+assert log_error("Failed") == "ERROR: Failed"
+assert log_info("Success") == "INFO: Success"
+
+# DON'T ❌
+class Logger:
+    def __init__(self, prefix):
+        self.prefix = prefix
+    
+    def log(self, text):
+        return f"{self.prefix}: {text}"
+
+# WHY: Function factories are simpler and more functional
 ```
 
-## Eta-conversion
-
-An eta conversion (also written η-conversion) is adding, or dropping an abstraction over
-a function.
+### Function Composition with Types
 
 ```python
-# Eta-conversion
-# λx.(f x) and f
-f = lambda x: x
+from typing import TypeVar, Callable
 
-(lambda x: f(x)) == f
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+# DO ✅
+def compose2(g: Callable[[U], V], 
+            f: Callable[[T], U]) -> Callable[[T], V]:
+    return lambda x: g(f(x))
+
+# Type-safe transformation chain
+parse_int = lambda s: int(s)
+is_positive = lambda n: n > 0
+validate_number = compose2(is_positive, parse_int)
+
+assert validate_number("42") == True
+assert validate_number("-1") == False
+
+# DON'T ❌
+def validate_number_unsafe(s: str) -> bool:
+    try:
+        return int(s) > 0
+    except ValueError:
+        return False
+
+# WHY: Typed composition ensures type safety
 ```
 
-Extensive use of η-*reduction* can lead to what's called *point-free* programming.
+## Best Practices
 
-> Extensive use of point-free programming can lead to *point-less* programming.
+### DO ✅
+- Write small, focused lambda functions
+- Use curry for partial application
+- Compose functions with pipe or compose
+- Create function factories for reusable logic
+- Use type hints with lambda functions
+
+### DON'T ❌
+- Write complex lambda expressions
+- Mix lambda and regular functions inconsistently
+- Nest function calls deeply
+- Create stateful closures
+- Ignore type safety in compositions
+
+## Testing Example
 
 ```python
-from functools import reduce
+def test_function_composition():
+    # Given
+    increment = lambda x: x + 1
+    multiply_by_two = lambda x: x * 2
+    convert_to_string = lambda x: str(x)
+    
+    # When
+    composed = compose(convert_to_string, multiply_by_two, increment)
+    piped = lambda x: pipe(x, increment, multiply_by_two, convert_to_string)
+    
+    # Then
+    assert composed(5) == "12"
+    assert piped(5) == "12"
 
-xs = reduce(lambda acc, x: max(acc, x), range(10))
-print(xs)
-
-xs = reduce(max, range(10))
-print(xs)
-```
-
-## Do we need to know about lambda calculus?
-
-You usually do not need to know about lambda calculus. But look out for point-free
-programming which may both simplify or over complicate your code. Lambda calculus is a
-must-have knowledge when dealing with compilers and expression trees (ASTs).
+def test_higher_order_function():
+    # Given
+    is_valid_age = create_validator(18, 120)
+    
+    # Then
+    assert is_valid_age(25) == True
+    assert is_valid_age(15) == False
+    assert is_valid_age(150) == False

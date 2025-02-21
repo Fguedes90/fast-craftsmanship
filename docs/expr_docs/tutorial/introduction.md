@@ -14,444 +14,196 @@ kernelspec:
 ---
 (tutorial_introduction)=
 
-# Functional Programming in Python
+# Introduction to Functional Programming with Expression Library
 
-> Do you know Python and would like to learn more about functional programming? Are you
-> wondering what the Scala, F#, and Haskell developers are talking about? Let's do some
-> functional programming in a language that you already know!
+## Core Concepts
 
-This tutorial that will get you up to speed with functional programming in Python using
-the [Expression](https://github.com/dbrattli/Expression) functional programming library.
+Expression is a Python library that brings functional programming patterns to Python in a type-safe and practical way.
 
-## Functional Programming
+## Key Features
 
-Functional programming is about programming with functions, or *expressions*. An
-expression is a combination of functions and values that evaluates to a value.
-
-Functional programming can sometimes be seen as difficult, scary or even intimidating.
-Talks about functional programming are often about Applicatives, Functors, and you might
-have heard about Category Theory or the infamous Monad. But you don't need to know about
-category theory and Monads to do functional programming.
-
-Note that object-oriented programming can in the same way be just as scary with words
-such as Inheritance, Interfaces, Abstract Base Classes, Covariance, Contravariance and
-Liskovs substitution principle.
-
-Lets look at how some object oriented programming patterns maps to functional
-programming:
-
-```{list-table}
-:header-rows: 1
-
-* - OO pattern / principle
-  - FP pattern / principle
-* - Single Responsibility Principle
-  - Functions
-* - Open/Closed Principle
-  - Functions
-* - Dependency Inversion Principle
-  - Functions, also
-* - Interface Segregation Principle
-  - Functions
-* - Factory pattern
-  - Yes, functions
-* - Strategy pattern
-  - Oh my, functions again
-* - Decorator pattern
-  - Functions
-* - Vistior pattern
-  - Functions
-```
-*(ref: https://fsharpforfunandprofit.com/fppatterns/)*
-
-If there is one takeaway from reading this, it is that functional programming is about
-expressions (functions and values) that evaluates to a value. This is stuff you most
-likely already know, and it don't have to be more difficult than that.
-
-## Python
-
-Python is a multi-paradigm language:
-
-- **Imperative**: `assert a == 10`
-- **Object-oriented**: `class B: ...`
-- **Procedural**: `print("test")`
-- ... and **Functional**: `xs = map(lambda x: x*2, [1, 2, 3])`
-
-So Python is not a functional-first programming language, but it has some functional
-programming features that we will explore in this tutorial.
-
-## Functions
-
-A function `f : A → B` takes some input `A` and produces some output `B`:
-
-```{code-cell} python
-def add(a, b):
-    return a + b
-
-add(10, 20)
-```
-
-## Lambda functions
-
-Using lambda we can create anonymous functions that we can assing to
-variables:
-
-```{code-cell} python
-add = lambda a, b: a + b
-
-add(10, 20)
-```
-
-## Pure functions
-
-Another aspect of functional programming is the concept of pure functions. A pure
-function is a function where the same input always gives the same output . Pure
-functions are  important for several reasons:
-
-- Pure functions are deterministic
-- Pure function can be unit-tested
-- Pure functions are thread-safe
-- Pure functions can be memoized
-- Pure functions lowers the cognitive load. I.e they can be reasoned about.
-- Pure functions have no side-effects
-
-We will explore this further when we talk about "Effects and Side-effects".
-
-## Higher-Order Functions
-
-A function that takes another function as an argument, or returns a function as a
-result, is called a **higher-order** function. In order to pass functions around, they
-need to be what’s called **first-class**. A first-class function can be used the same
-way as any other Python value:
-
-- Assign a function or a method to a variable or object property.
-- Pass functions as arguments to other functions or methods.
-- Return functions as the result from other functions.
-- Create functions dynamically at runtime.
-
-
-### Assign a function to a variable
+### Pure Functions
 
 ```python
-multiply = lambda a, b: a * b
-```
-
-```python
-def add(a, b):
-    return a + b
-
-adding = add
-```
-
-### A function returning a function
-
-```python
-def add_n(n):
-    def partial(x):
-        return x+n
-    return partial
-```
-
-```python
-lambda n: lambda x: x+n
-```
-
-### A function that takes a function as an argument
-
-```python
-def square(x, multiply):
-    return multiply(x, x)
-```
-
-### Create function dynamically at runtime
-
-```{warning}
-You should normally never use eval because of security risks related to code injection
-````
-
-```{code-cell} python
-add_10 = eval("lambda x: x+10")
-add_10(20)
-```
-
-## Currying and Partial Application
-
-A function that takes two arguments is basically exactly the same as a function that
-takes one argument and returns a function that takes the second argument.
-
-Some languages like F# supports automatic currying of functions. Python does not support
-automatic currying of functions, but we can define functions that return functions.
-
-Here is a function that takes two arguments:
-
-```{code-cell} python
-add = lambda a, b: a + b
-add(10, 20)
-```
-
-We can write this function as a function that takes one argument and returns a
-function that takes the second argument:
-
-```{code-cell} python
-add = lambda a: lambda b: a + b
-add(10)(20)
-```
-
-We do not use currying in the core part of Expression, but the library itself supports
-the concept using the curried decorator:
-
-```{code-cell} python
-from expression import curry
-
-@curry(1)
+# DO ✅
 def add(a: int, b: int) -> int:
     return a + b
 
-add(3)(4)
+result = add(1, 2)  # Always returns 3
+
+# DON'T ❌
+total = 0
+def impure_add(a: int):
+    global total
+    total += a
+    return total
+
+# WHY: Pure functions are predictable, testable, and thread-safe
 ```
 
-This enables partial application where a number of arguments except the last is given to
-a function. Partial application is used extensively in libraries such as Expression,
-RxPY and aioreactive.
+### Immutable Data
 
-```{code-cell} python
-from expression import pipe
-from expression.collections import seq
+```python
+from expression.collections import Block, Map
 
-xs = seq.of_iterable(range(10))
+# DO ✅
+def process_items(items: Block[int]) -> Block[int]:
+    return items.map(lambda x: x * 2)
 
-mapping = seq.map(lambda x: x * 10)
-filter = seq.filter(lambda x: x > 30)
+original = Block.of_seq([1, 2, 3])
+doubled = process_items(original)  # [2, 4, 6]
+assert original != doubled  # Original remains unchanged
 
-pipe(xs,
-    mapping,
-    filter,
-    list,
+# DON'T ❌
+def mutate_list(items: list) -> list:
+    for i in range(len(items)):
+        items[i] *= 2
+    return items
+
+# WHY: Immutability prevents accidental state changes and side effects
+```
+
+### Function Composition
+
+```python
+from expression.core import pipe
+
+# DO ✅
+def add_one(x: int) -> int: return x + 1
+def double(x: int) -> int: return x * 2
+
+result = pipe(
+    5,
+    add_one,    # 6
+    double      # 12
 )
+
+# DON'T ❌
+def process_number(x: int) -> int:
+    temp = add_one(x)
+    return double(temp)
+
+# WHY: Pipe creates readable, maintainable function chains
 ```
 
-## Pipelining
-
-Making pipelines of operations is well known from the Unix terminal and shell
-programming.
-
-```bash
-command_1 | command_2 | command_3 | .... | command_N
-```
-
-F# uses the `|>` operator for piping. The definition of the pipe operator is
-surprisingly simple:
-
-```fsharp
-let (|>) x f = f x
-```
-
-The main idea of pipelining is simply to bring the argument to the left side of the
-function (instead of the right). The main reason for this is that we are teached to read
-from left to right. Thus the traditional way of nesting functions is not very easy to
-read:
-
-```{code-cell} python
-import functools
-from builtins import filter, map
-
-
-xs = range(10)
-
-functools.reduce(lambda s, x: s + x, filter(lambda x: x > 50, map(lambda x: x * 10, xs)), 0)
-```
-
-Python do not have a pipe operators and overloading existing operators e.g `|` is not
-recommended. Expression provides a
-[pipe](https://github.com/dbrattli/Expression/blob/main/expression/core/pipe.py)
-function that we can use instead:
-
-```{code-cell} python
-from expression import pipe
-from expression.collections import seq
-
-xs = seq.range(10)
-
-pipe(
-    xs,
-    seq.map(lambda x: x * 10),
-    seq.filter(lambda x: x > 50),
-    seq.fold(lambda s, x: s + x, 0),
-)
-```
-
-The key thing to note is that for pipelining to work, then every function can only take
-a single argument. So how can we provide both e.g a mapper and an iterable for the
-`seq.map` function? The answer is to use currying or higher-order functions. Remember
-that a function that takes two arguments is the same as a function that takes the first
-argument and returns a function that takes the second argument. Here is how the `map`
-function in the sequence module is defined:
+### Option Type
 
 ```python
-def map(mapper: Callable[[TSource], TResult]) -> Callable[[Iterable[TSource]], Iterable[TResult]]:
-    def _map(source: Iterable[TSource]) -> Iterable[TResult]:
-        return (mapper(x) for x in source)
+from expression import Option, Some, Nothing
 
-    return _map
+# DO ✅
+def divide(a: float, b: float) -> Option[float]:
+    return Some(a / b) if b != 0 else Nothing
+
+def process_division(a: float, b: float) -> str:
+    return (
+        divide(a, b)
+        .map(lambda x: f"Result: {x}")
+        .default_value("Cannot divide by zero")
+    )
+
+# DON'T ❌
+def unsafe_divide(a: float, b: float) -> float | None:
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return None
+
+# WHY: Option type makes null checks explicit and composable
 ```
 
-This allows us to do partial application of functions and have the last function take a single argument. The `pipe`
-operator in Expression is defined as follows:
+## Best Practices
+
+### DO ✅
+- Write pure functions
+- Use immutable data structures
+- Compose functions with pipe
+- Handle null with Option
+- Use type hints consistently
+
+### DON'T ❌
+- Rely on global state
+- Mutate data structures
+- Nest function calls deeply
+- Use None for missing values
+- Mix functional and imperative styles
+
+## Practical Example
 
 ```python
-def pipe(value: Any, *fns: Callable[[Any], Any]) -> Any:
-    """Functional pipe (`|>`)
+from expression import Option, pipe
+from expression.collections import Block
+from dataclasses import dataclass
+from typing import Callable
 
-    Allows the use of function argument on the left side of the function.
+@dataclass(frozen=True)
+class User:
+    name: str
+    age: int
 
-    Example:
-        >>> pipe(x, fn) == fn(x)  # Same as x |> fn
-        >>> pipe(x, fn, gn) == gn(fn(x))  # Same as x |> fn |> gn
-        ...
-    """
+def validate_age(age: int) -> Option[int]:
+    return Some(age) if 0 <= age <= 120 else Nothing
 
-    return compose(*fns)(value)
+def validate_name(name: str) -> Option[str]:
+    return Some(name) if name.strip() else Nothing
+
+# DO ✅
+def create_user(name: str, age: int) -> Option[User]:
+    return (
+        validate_name(name)
+        .bind(lambda n: 
+            validate_age(age)
+            .map(lambda a: User(n, a))
+        )
+    )
+
+# Process a list of users
+def process_users(data: Block[tuple[str, int]]) -> Block[User]:
+    return (
+        data
+        .map(lambda t: create_user(*t))
+        .filter_map(lambda x: x)  # Remove None values
+    )
+
+# Usage
+users_data = Block.of_seq([
+    ("Alice", 30),
+    ("", -1),      # Invalid
+    ("Bob", 25)
+])
+
+valid_users = process_users(users_data)
+assert len(valid_users) == 2
+
+# DON'T ❌
+def create_user_unsafe(name: str, age: int) -> User | None:
+    if not name.strip() or not (0 <= age <= 120):
+        return None
+    return User(name, age)
+
+# WHY: Functional approach provides better composability and error handling
 ```
 
-We see that piping is a one-liner that uses a composition operator. Let's look more into
-function composition.
-
-## Composition
-
-In programming we are building programs by combining smaller pieces of code into larger
-ones. This is very similar to building with lego bricks. Combining many small lego
-bricks into larger constructions, is more flexible than having a few fixed large size
-pieces to start with.
-
-> *Composition is the essence of programming - Bartosz Milewski*
-
-```fsharp
-// F#
-let compose (f: 'a -> 'b) (g: 'b -> 'c) : 'a -> 'c =
-    f >> g
-```
+## Testing Example
 
 ```python
-# Python
-define compose(f: Callable[[A], B], g: Callable[[B], C]) -> Callable[[A], C]:
-    return lambda x: g(f(x))
-```
-
-```{code-cell} python
-def f(x):
-    return x+1
-
-def g(x):
-    return x*2
-
-# Procedural / imperative composition. The function `h` becomes hard-coded to `f` ang `g`
-def h(x):
-    y = f(x)
-    z = g(y)
-    return z
-h(42)
-```
-
-```{code-cell} python
-# Functional compose. Inject all dependencies.
-def compose(f, g):
-    return lambda x: g(f(x))
-
-h = compose(f, g)
-h(42)
-```
-
-## Functional Composition is Associative
-
-```{code-cell} python
-def test(x):
-    f = lambda x: x + 1
-    g = lambda x: x * 2
-    h = lambda x: x - 10
-
-    right = compose(f, compose(g, h))
-    left = compose(compose(f, g), h)
-
-    assert right(x) == left(x)
-
-test(10)
-```
-
-The `compose` operator in Expression is defined as follows:
-
-```python
-from typing import Callable, Any
-
-def compose(*fns: Callable[[Any], Any]) -> Callable[[Any], Any]:
-    """Compose multiple functions left to right."""
-
-    def _compose(source: Any) -> Any:
-        return reduce(lambda acc, f: f(acc), fns, source)
-
-    return _compose
-```
-
-It is basically an iteration of the functions keeping an accumulator with the currently
-composed functions.
-
-## Believe the Type
-
-Python is a strongly typed dynamic programming language. This means that the type of a
-variable is only checked at runtime. Other languages such as F#, Scala, Haskell to type
-checking at compile time.
-
-```python
-def run():
-    return "abc" + 10
-```
-
-```python
-run()
-```
-
-But there are a several static type checkers for Python that we can use:
-
-* **Mypy:** https://github.com/python/mypy
-* **Pyre-check:** https://github.com/facebook/pyre-check
-* **Pylance:** https://github.com/microsoft/pylance-release
-
-Static type checkers can significantly improve the quality of the code. The problem with
-Python is that the type checkers have not been able to really say if your code is
-correct or not. So you really don't know if it's the code or the type checker that is
-right (or wrong).
-
-## Industrial Strength Code
-
-With Expression we are aiming for industral strength code. What is industrial strength?
-
-> Marked by more than usual power, durability, or intensity
-
-The difference with "more than usual" and "usual" can be subtle, but even a subtle
-difference can have a significant effect when you start deploying to 100.000 servers
-(e.g Exchange, Facebook, etc) instead of a single server. You need to plan for more than
-being lucky.
-
-Functional programmming is not a silver bullet, but it can
-
-- Use simple well-tested abstractions. Don't reinvent the wheel.
-- Use immutable data types whenever possible.
-- Use pure functions. Avoid None-taking/returning methods or functions
-- Use a static type checker like Pylance (in strict mode)
-- Use unit-testing and property-based testing for core logic. E.g a library like pytest
-  and Hypotheses
-- Use single-threaded code to avoid Heisenbugs
-
-Cost of failure increases exponentially the further the bug
-
-- Type checks (instant)
-- Unit tests (seconds)
-- Integration tests (minutes and hours)
-- Test deployment (hours and days)
-- Production deployment (days and months)
-- Dedicated deployment on-prem at customer location (💸)
-
-```{note}
-"A Heisenbug is a classification of an unusual software bug that disappears or alters its behavior when an attempt to
-isolate it is made. Due to the unpredictable nature of a Heisenbug, when trying to recreate the bug or using a debugger,
-the error may change or even vanish on a retry."
-```
+def test_user_creation():
+    # Valid case
+    result = create_user("Alice", 30)
+    assert result.is_some()
+    assert result.value.name == "Alice"
+    
+    # Invalid cases
+    assert create_user("", 30).is_none()
+    assert create_user("Bob", -1).is_none()
+    
+def test_user_processing():
+    data = Block.of_seq([
+        ("Alice", 30),
+        ("", -1),
+        ("Bob", 25)
+    ])
+    
+    result = process_users(data)
+    assert len(result) == 2
+    assert all(isinstance(u, User) for u in result)
