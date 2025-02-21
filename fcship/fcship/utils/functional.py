@@ -58,6 +58,6 @@ from expression import Nothing  # adicione se necessário
 
 def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
     """Converte um Option em Result, retornando um Error com a mensagem fornecida caso seja Nothing."""
-    if opt == Nothing:
+    if opt is Nothing:
         return Error(ValueError(error_msg))
     return Ok(opt.value)
