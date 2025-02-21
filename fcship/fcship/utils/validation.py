@@ -3,6 +3,7 @@ from collections.abc import Callable, Sequence
 from typing import TypeVar
 import typer
 from expression import Result, Ok, Error, pipe, Try, effect, option, Option
+from fcship.fcship.utils.functional import option_to_result
 
 T = TypeVar('T')
 E = TypeVar('E', bound=Exception)

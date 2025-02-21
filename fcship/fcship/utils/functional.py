@@ -68,3 +68,11 @@ def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
             return value
         return inner()
     return tapped
+
+from expression import Nothing  # adicione se necessário
+
+def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
+    """Converte um Option em Result, retornando um Error com a mensagem fornecida caso seja Nothing."""
+    if opt == Nothing:
+        return Error(ValueError(error_msg))
+    return Ok(opt.value)

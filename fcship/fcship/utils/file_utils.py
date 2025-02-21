@@ -11,7 +11,7 @@ console = Console()
 
 @effect.try_[None]()
 def ensure_directory(path: Path) -> None:
-    """Ensure a directory exists, creating it if necessary."""
+    """Garante que o diretório pai do caminho fornecido exista, criando-o se necessário."""
     path.parent.mkdir(parents=True, exist_ok=True)
 
 class FileCreationTracker:
