@@ -43,23 +43,16 @@ def compose_validations(*validators: Callable[[T], Result[T, Exception]]) -> Cal
 
 def sequence_validations(validations: Sequence[Result[T, E]]) -> Result[Sequence[T], E]:
     """Convert a sequence of validation Results into a Result of sequence.
-    
+
     This is useful when you want to collect all validation results and only proceed
     if all validations pass.
     """
-    def folder(acc: Result[list[T], E], item: Result[T, E]) -> Result[list[T], E]:
-        return pipe(
-            acc,
-            lambda xs: pipe(
-                item,
-                lambda x: Ok([*xs, x]) if acc.is_ok() else acc
-            )
-        )
-    
-    return pipe(
-        validations,
-        lambda xs: Try.fold(folder, Ok([]), xs)
-    )
+    results: list[T] = []
+    for valid in validations:
+        if valid.is_error():
+            return valid
+        results.append(valid.ok)
+    return Ok(results)
 
 def validate_optional(value: Option[T], error_msg: str) -> Result[T, Exception]:
     """Validate an optional value, returning Error if Nothing."""

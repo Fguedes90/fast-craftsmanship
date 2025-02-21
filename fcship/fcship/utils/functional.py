@@ -68,10 +68,3 @@ def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
             return value
         return inner()
     return tapped
-def option_to_result(value: Option[T], error_msg: str = "No value present") -> Result[T, Exception]:
-    """Convert an Option to a Result, returning an Error if the Option is Nothing."""
-    return pipe(
-        value,
-        option.map(Ok),
-        option.default_value(Error(ValueError(error_msg)))
-    )
