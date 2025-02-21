@@ -435,14 +435,13 @@ def test_result_bind():
     result = Ok(0).bind(divide)
     assert result.is_error()
     assert isinstance(result.error, ValueError)
-```
 
 3. **Chain of Operations**
 ```python
 def test_operation_chain():
     def validate(x: int) -> Result[int, Exception]:
         return Ok(x) if x > 0 else Error(ValueError("Must be positive"))
-    
+
     def process(x: int) -> Result[str, Exception]:
         return Ok(str(x))
 
@@ -455,6 +454,32 @@ def test_operation_chain():
 
     assert result.is_ok()
     assert result.ok == "84"
+```
+
+### Example: Testing map_error Transformation
+```python
+def test_map_error():
+    # Exemplo de transformação de erro com map_error
+    result = Error(ValueError("original error"))
+    new_result = result.map_error(lambda e: ValueError("modified error"))
+    assert new_result.is_error()
+    assert str(new_result.error) == "modified error"
+```
+
+### Example: Testing recover Operation
+```python
+def test_recover():
+    # Exemplo de recuperação de um erro para um valor padrão usando recover
+    result = Error(ValueError("initial error"))
+    recovered = result.recover(lambda e: 42)
+    assert recovered.is_ok()
+    assert recovered.ok == 42
+
+    # Se o resultado já for Ok, recover não altera o valor
+    success = Ok(10)
+    not_recovered = success.recover(lambda e: 0)
+    assert not_recovered.is_ok()
+    assert not_recovered.ok == 10
 ```
 
 ### Performance Testing Considerations
