@@ -38,8 +38,6 @@ def compose_validations(*validators: Callable[[T], Result[T, Exception]]) -> Cal
         result = Ok(value)
         for v in validators:
             result = result.bind(v)
-            if result.is_error():
-                break
         return result
     return composed
 
@@ -65,8 +63,4 @@ def sequence_validations(validations: Sequence[Result[T, E]]) -> Result[Sequence
 
 def validate_optional(value: Option[T], error_msg: str) -> Result[T, Exception]:
     """Validate an optional value, returning Error if Nothing."""
-    return pipe(
-        value,
-        option.map(Ok),
-        option.default_value(Error(ValueError(error_msg)))
-    )
+    return option_to_result(value, error_msg)

@@ -18,7 +18,9 @@ def catch_errors(fn: Callable[P, Awaitable[A]]) -> Awaitable[A]: ...
 @effect.try_[A]()
 def catch_errors(fn: Callable[P, A] | Callable[P, Awaitable[A]]) -> A | Awaitable[A]:
     """Decorator to catch and transform errors into Results using Expression's Try effect.
-    Works with both sync and async functions."""
+    Works with both sync and async functions.
+    This is an alias for @effect.try_ to unify the usage in sync/async functions.
+    """
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> A:
             return await fn(*args, **kwargs)
@@ -29,11 +31,7 @@ def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]
     """Lift an Option-returning function into a Result-returning function."""
     def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[A, Exception]:
         opt = fn(*args, **kwargs)
-        return pipe(
-            opt,
-            option.map(Ok),
-            option.default_value(Error(ValueError("No value present")))
-        )
+        return option_to_result(opt, "No value present")
     return wrapped
 
 async def collect_results(results: Sequence[Awaitable[Result[A, Exception]]]) -> Result[Sequence[A], Exception]:
@@ -50,11 +48,9 @@ def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence
     Short-circuits on first Error."""
     values: list[A] = []
     for result in results:
-        match result:
-            case Ok(value):
-                values.append(value)
-            case Error(e):
-                return Error(e)
+        if result.is_error():
+            return result
+        values.append(result.ok)
     return Ok(values)
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
@@ -64,11 +60,18 @@ def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
         return value
     return tapped
 
-async def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
+def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
     """Create an async function that runs a side effect but returns the original value."""
     def tapped(value: A) -> Awaitable[A]:
-        async def inner(value: A) -> A:
+        async def inner() -> A:
             await fn(value)
             return value
-        return inner(value)
+        return inner()
     return tapped
+def option_to_result(value: Option[T], error_msg: str = "No value present") -> Result[T, Exception]:
+    """Convert an Option to a Result, returning an Error if the Option is Nothing."""
+    return pipe(
+        value,
+        option.map(Ok),
+        option.default_value(Error(ValueError(error_msg)))
+    )
