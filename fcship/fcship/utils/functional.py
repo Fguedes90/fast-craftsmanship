@@ -66,7 +66,9 @@ def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
 
 async def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
     """Create an async function that runs a side effect but returns the original value."""
-    async def tapped(value: A) -> A:
-        await fn(value)
-        return value
+    def tapped(value: A) -> Awaitable[A]:
+        async def inner(value: A) -> A:
+            await fn(value)
+            return value
+        return inner(value)
     return tapped
