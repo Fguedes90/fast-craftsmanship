@@ -73,6 +73,19 @@ def test_option_with_value():
 def test_option_with_nothing():
     result = get_optional_value()
     assert result == Nothing
+
+### Example: Getting Option Value with Default
+```python
+def test_option_get_or_else():
+    # Supondo que o Option possua o método get_or_else para fornecer um valor padrão quando Nothing
+    result_some = Some(100)
+    value_some = result_some.get_or_else(0)  # Se não houver, substitua por outro método de fallback adequado
+    assert value_some == 100
+
+    result_nothing = Nothing
+    value_nothing = result_nothing.get_or_else(0)
+    assert value_nothing == 0
+```
 ```
 
 ## Testing Railway-Oriented Programming (ROP)
