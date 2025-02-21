@@ -54,12 +54,12 @@ When testing functions that return `Option` types:
 ### Creating Options
 
 ```python
-from expression import Some, Nothing
+from expression import Some, Nothing  # 'Nothing' é um singleton que representa a ausência de valor.
 
-# Create Some value
+# Exemplo: Criar um valor Some
 some_value = Some(42)
 
-# Create Nothing value
+# Exemplo: Representar ausência de valor com Nothing
 nothing = Nothing
 ```
 
@@ -83,17 +83,19 @@ When testing functions that use ROP patterns:
 
 ```python
 def test_compose_validations():
+    # Nota: As funções `validate` e `compose_validations` são helpers definidos pela
+    # aplicação para fins de demonstração e não fazem parte da API central da biblioteca Expression.
     first_validation = validate(lambda x: x > 0, "Must be positive")
     second_validation = validate(lambda x: x < 10, "Must be less than 10")
-    
+
     composed = compose_validations(first_validation, second_validation)
-    
-    # Test success case
+
+    # Caso de sucesso
     result = composed(5)
     assert result.is_ok()
     assert result.ok == 5
-    
-    # Test failure case
+
+    # Caso de falha
     result = composed(-5)
     assert result.is_error()
     assert "Must be positive" in str(result.error)
