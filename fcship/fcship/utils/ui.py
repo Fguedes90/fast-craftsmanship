@@ -21,12 +21,32 @@ def error_message(message: str, details: str | None = None) -> Result[None, Exce
 
 def format_message(parts: list[str], separator: str = "\n\n") -> Result[str, Exception]:
     """Format multiple message parts into a single message.
-    
+
     Args:
         parts: List of message parts to combine
         separator: Separator to use between parts
-        
+
     Returns:
         A Result containing the formatted message or an error
     """
     return Ok(separator.join(filter(None, parts)))
+
+def validate_operation(
+    operation: str,
+    valid_operations: list[str],
+    name: str | None = None,
+    requires_name: list[str] | None = None
+) -> str:
+    """Validate command operation and arguments using Expression's Try effect."""
+    if operation not in valid_operations:
+        valid_ops = ", ".join(valid_operations)
+        raise typer.BadParameter(
+            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+        )
+
+    if requires_name and operation in requires_name and not name:
+        raise typer.BadParameter(
+            f"Operation '{operation}' requires a name parameter"
+        )
+
+    return operation

@@ -39,3 +39,23 @@ def map_type(
         f(str(x)),
         Try.map(type_constructor)
     )
+
+def validate_operation(
+    operation: str,
+    valid_operations: list[str],
+    name: str | None = None,
+    requires_name: list[str] | None = None
+) -> str:
+    """Validate command operation and arguments using Expression's Try effect."""
+    if operation not in valid_operations:
+        valid_ops = ", ".join(valid_operations)
+        raise typer.BadParameter(
+            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+        )
+
+    if requires_name and operation in requires_name and not name:
+        raise typer.BadParameter(
+            f"Operation '{operation}' requires a name parameter"
+        )
+
+    return operation

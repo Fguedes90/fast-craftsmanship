@@ -28,17 +28,17 @@ class FileCreationTracker:
         table = Table()
         table.add_column("File")
         table.add_column("Status")
-        
+
         for path, status in self.files.items():
             table.add_row(path, status)
-            
+
         return table
 
 @contextmanager
 def file_creation_status(title: str = "Creating files...") -> Generator[FileCreationTracker, None, None]:
     """Context manager for tracking and displaying file creation status."""
     tracker = FileCreationTracker()
-    
+
     with Live(tracker.make_table(), console=console, refresh_per_second=4) as live:
         try:
             yield tracker
@@ -54,7 +54,7 @@ def create_file(path: Path, content: str, status_tracker: FileCreationTracker) -
 
 def create_files(files: dict[str, str], base_path: str = "") -> None:
     """Create multiple files with their contents.
-    
+
     Args:
         files: Dictionary mapping file paths to their contents
         base_path: Optional base path to prepend to all file paths
@@ -63,3 +63,23 @@ def create_files(files: dict[str, str], base_path: str = "") -> None:
         for path, content in files.items():
             full_path = Path(base_path) / path
             Try.apply(lambda: create_file(full_path, content, status))
+
+def validate_operation(
+    operation: str,
+    valid_operations: list[str],
+    name: str | None = None,
+    requires_name: list[str] | None = None
+) -> str:
+    """Validate command operation and arguments using Expression's Try effect."""
+    if operation not in valid_operations:
+        valid_ops = ", ".join(valid_operations)
+        raise typer.BadParameter(
+            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+        )
+
+    if requires_name and operation in requires_name and not name:
+        raise typer.BadParameter(
+            f"Operation '{operation}' requires a name parameter"
+        )
+
+    return operation
