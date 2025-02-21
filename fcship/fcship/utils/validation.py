@@ -34,10 +34,14 @@ def validate(validator: Callable[[T], bool], error_msg: str) -> Callable[[T], Re
 
 def compose_validations(*validators: Callable[[T], Result[T, Exception]]) -> Callable[[T], Result[T, Exception]]:
     """Compose multiple validation functions into a single validation."""
-    return lambda value: pipe(
-        Ok(value),
-        *[lambda x: x.bind(v) for v in validators]
-    )
+    def composed(value: T) -> Result[T, Exception]:
+        result = Ok(value)
+        for v in validators:
+            result = result.bind(v)
+            if result.is_error():
+                break
+        return result
+    return composed
 
 def sequence_validations(validations: Sequence[Result[T, E]]) -> Result[Sequence[T], E]:
     """Convert a sequence of validation Results into a Result of sequence.

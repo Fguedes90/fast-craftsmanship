@@ -22,8 +22,8 @@ def catch_errors(fn: Callable[P, A] | Callable[P, Awaitable[A]]) -> A | Awaitabl
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> A:
             return await fn(*args, **kwargs)
-        return wrapper()
-    return fn()
+        return wrapper
+    return fn
 
 def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]:
     """Lift an Option-returning function into a Result-returning function."""
