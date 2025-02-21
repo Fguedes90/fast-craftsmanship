@@ -9,23 +9,8 @@ B = TypeVar('B')
 C = TypeVar('C')
 P = ParamSpec('P')
 
-@overload
-def catch_errors(fn: Callable[P, A]) -> A: ...
-
-@overload
-def catch_errors(fn: Callable[P, Awaitable[A]]) -> Awaitable[A]: ...
-
-@effect.try_[A]()
-def catch_errors(fn: Callable[P, A] | Callable[P, Awaitable[A]]) -> A | Awaitable[A]:
-    """Decorator to catch and transform errors into Results using Expression's Try effect.
-    Works with both sync and async functions.
-    This is an alias for @effect.try_ to unify the usage in sync/async functions.
-    """
-    if asyncio.iscoroutinefunction(fn):
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> A:
-            return await fn(*args, **kwargs)
-        return wrapper
-    return fn
+## OBS.: O decorator `catch_errors` é redundante em face de `@effect.try_`.
+## Recomenda-se utilizar diretamente `@effect.try_` nas funções.
 
 def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]:
     """Lift an Option-returning function into a Result-returning function."""
