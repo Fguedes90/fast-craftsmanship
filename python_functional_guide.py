@@ -10,133 +10,110 @@
 # ------------------------------------------------------------------------------
 #
 # NÃO FAZER: Função com efeitos colaterais (ex.: impressão) misturados com lógica.
-def add_and_print(a, b):
-    result = a + b
-    print("Resultado (impuro):", result)
-    return result
+from expression import pipe
 
-# FAZER: Função pura, sem efeitos colaterais, que apenas retorna o resultado.
-def add(a, b):
-    return a + b
+add_and_print = lambda a, b: pipe(a + b, lambda result: (print("Resultado (impuro):", result), result)[1])
+
+# FAZER: Função pura que apenas retorna o resultado.
+add = lambda a, b: a + b
 
 # ------------------------------------------------------------------------------
 # Seção 2: Composição Funcional com `pipe` e `compose`
 # ------------------------------------------------------------------------------
 from expression import pipe, compose, Ok, Error, Try
 
-# NÃO FAZER: Chamadas de funções aninhadas difíceis de ler.
-def calculate_bad(x):
-    return (lambda a: (lambda b: a + b)(x * 2))(x + 3)
+# NÃO FAZER (exemplo ruim com aninhamento):
+calculate_bad = lambda x: (lambda a: (lambda b: a + b)(x * 2))(x + 3)
 
-# FAZER: Usando `pipe` para compor funções de forma legível.
-def calculate_good(x):
-    def add3(val):
-        return val + 3
-    def multiply2(val):
-        return val * 2
-    return pipe(x, add3, multiply2)
+# FAZER: Utilizando pipe para compor de forma legível:
+calculate_good = lambda x: pipe(x, (lambda val: val + 3), (lambda val: val * 2))
 
-# Alternativamente, usando `compose` (composição da esquerda para a direita):
-def calculate_compose(x):
-    add_then_multiply = compose(lambda x: x + 3, lambda x: x * 2)
-    return add_then_multiply(x)
+# Alternativamente, utilizando compose para composição da esquerda para a direita:
+calculate_compose = lambda x: compose((lambda v: v + 3), (lambda v: v * 2))(x)
 
 # ------------------------------------------------------------------------------
 # Seção 3: Tratamento de Erros com Try e Option
 # ------------------------------------------------------------------------------
 from expression import effect, option, Nothing, Some
 
-# NÃO FAZER: Função de divisão sem tratamento de erro, que pode levantar exceção.
-def divide_bad(a, b):
-    return a / b  # Pode levantar ZeroDivisionError
+# NÃO FAZER: Divisão sem tratamento de erro.
+divide_bad = lambda a, b: a / b
 
-# FAZER: Usando o decorator effect.try_ para encapsular a lógica e tratar erros.
-@effect.try_[float]()
-def divide(a, b):
-    if b == 0:
-        raise ValueError("Divisão por zero não é permitida")
-    return a / b
+# FAZER: Utilizando pipe para evitar aninhamento e tratar o erro.
+__raise = lambda e: (_ for _ in ()).throw(e)
+divide = effect.try_[float](lambda a, b:
+    pipe((a, b), lambda t: t[0] / t[1] if t[1] != 0
+         else __raise(ValueError("Divisão por zero não é permitida")))
+)
 
-# Exemplo com Option: Evitar o uso de None e expressar a ausência de valor.
-def get_item_option(lst, index):
-    try:
-        return Some(lst[index])
-    except IndexError:
-        return Nothing
+# Exemplo com Option, sem aninhar chamadas.
+get_item_option = lambda lst, index: Some(lst[index]) if 0 <= index < len(lst) else Nothing
 
 # ------------------------------------------------------------------------------
 # Seção 4: Utilitários de Ordem Superior: tap e map_type
 # ------------------------------------------------------------------------------
 def log_side_effect(value):
     # Exemplo de efeito colateral: log (pode ser substituído por um logger real)
-    print("Log:", value)
+    print("Log:", value)fcship/fcship/utils/type_utils.py
+<source>python
+<<<<<<< SEARCH
+from collections.abc import Callable
+from typing import TypeVar, Any
+from expression import Result, pipe, Try, effect
 
-# NÃO FAZER: Misturar cálculos com efeitos colaterais.
-def compute_bad(x):
-    y = x * 10
-    print("Computed (impuro):", y)
-    return y
+T = TypeVar('T')
 
-# FAZER: Usando a função tap para realizar efeitos colaterais sem interferir no fluxo de dados.
-from fcship.fcship.utils.functional import tap
-def compute_good(x):
-    y = x * 10
-    return tap(log_side_effect)(y)
+@effect.try_[T]()
+def ensure_type(
+    value: Any,
+    type_constructor: Callable[[Any], T],
+    type_name: str,
+    validation_fn: Callable[[Any], bool] | None = None,
+) -> T:
+    """Ensure a value satisfies type and validation requirements using Expression's Try effect.
 
-# Exemplo para map_type:
-from fcship.fcship.utils.type_utils import map_type
-def transform_str(s):
-    # Função de transformação que retorna um Result.
-    if s:
-        return Ok(s.strip().upper())
-    return Error(ValueError("String vazia"))
+    Args:
+        value: Value to validate and cast
+        type_constructor: Function to create the type
+        type_name: Name of the type for error messages
+        validation_fn: Optional validation function
+    """
+    if validation_fn and not validation_fn(value):
+        raise ValueError(f"Invalid {type_name}")
 
-def transform_id(value):
-    # Converte o valor para string, transforma e reconverte para o tipo original.
-    return map_type(transform_str, int)(value)
+    return type_constructor(value)
 
-# ------------------------------------------------------------------------------
-# Seção 5: Operações Assíncronas Funcionais
-# ------------------------------------------------------------------------------
-import asyncio
-from fcship.fcship.utils.error_handling import handle_command_errors
+def map_type(
+    f: Callable[[str], Result[str, Exception]],
+    type_constructor: Callable[[str], T]
+) -> Callable[[T], Result[T, Exception]]:
+    """Map a function over a type while preserving its type.
 
-# NÃO FAZER: Função assíncrona sem tratamento de erros.
-async def fetch_data_bad(url):
-    response = await asyncio.sleep(0.1, result=f"Dados de {url}")
-    return response
+    Args:
+        f: Function to map over the value
+        type_constructor: Constructor for the type
+    """
+    return lambda x: pipe(
+        f(str(x)),
+        Try.map(type_constructor)
+    )
 
-# FAZER: Usando o decorator handle_command_errors para tratamento elegante de erros.
-@handle_command_errors
-async def fetch_data(url):
-    response = await asyncio.sleep(0.1, result=f"Dados de {url}")
-    return response
+def validate_operation(
+    operation: str,
+    valid_operations: list[str],
+    name: str | None = None,
+    requires_name: list[str] | None = None
+) -> str:
+    """Validate command operation and arguments using Expression's Try effect."""
+    if operation not in valid_operations:
+        valid_ops = ", ".join(valid_operations)
+        raise typer.BadParameter(
+            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+        )
 
-# ------------------------------------------------------------------------------
-# Seção 6: Abordagem de Testes Funcionais
-# ------------------------------------------------------------------------------
-# FAZER: Escrever funções puras que são facilmente testáveis.
-def pure_transform(x):
-    return x * x
+    if requires_name and operation in requires_name and not name:
+        raise typer.BadParameter(
+            f"Operation '{operation}' requires a name parameter"
+        )
 
-# Exemplo de teste básico para funções puras.
-def test_pure_transform():
-    assert pure_transform(3) == 9
-    assert pure_transform(0) == 0
-
-# ------------------------------------------------------------------------------
-# Execução dos Exemplos
-# ------------------------------------------------------------------------------
-if __name__ == '__main__':
-    print("Exemplo de função pura (add):", add(3, 4))
-    print("Exemplo de cálculo com pipe:", calculate_good(5))
-    try:
-        print("Resultado da divisão:", divide(10, 2))
-    except Exception as e:
-        print("Erro na divisão:", e)
-    print("Exemplo de Option:", get_item_option([1, 2, 3], 1))
-    print("Exemplo de composição com compose:", calculate_compose(5))
-    # Executando função assíncrona com tratamento de erro:
-    print("Resultado assíncrono:", asyncio.run(fetch_data("http://exemplo.com")))
-    test_pure_transform()
-    print("Todos os testes passaram!")
+    return operation
