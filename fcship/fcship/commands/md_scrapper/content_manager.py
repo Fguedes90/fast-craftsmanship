@@ -2,6 +2,7 @@
 import os
 import logging
 from expression import Ok, pipe
+from fcship.utils.functional import handle_error
 from .url_utils import get_safe_filename
 from .types import (
     ContentResult, 
@@ -12,7 +13,7 @@ from .types import (
     Filename,
     Url
 )
-from .functional_utils import handle_error
+from .result_utils import catch_errors
 
 async def extract_content(page, url: Url, content_selector: str = None) -> ContentResult:
     """Extract content using ROP."""
@@ -40,6 +41,7 @@ async def extract_content(page, url: Url, content_selector: str = None) -> Conte
             f"Failed to extract content from {url}: {str(e)}"
         )
 
+@catch_errors(ContentExtractionError, "Failed to save content")
 async def save_content(content: Content, filename: Filename, output_dir: str, file_lock) -> ScraperResult:
     """Save content using ROP."""
     filepath = os.path.join(output_dir, filename)

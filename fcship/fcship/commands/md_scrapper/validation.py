@@ -1,7 +1,12 @@
 """Validation module with functional approach."""
 from typing import List, Optional, Any
-from expression import Result, Ok, Error, pipe, pipeline
 from urllib.parse import urlparse
+from expression import Result, Ok, Error, pipe
+from fcship.utils.functional import (
+    sequence_results,
+    catch_errors
+)
+from fcship.utils.type_utils import ensure_type
 from .validation_exceptions import (
     ValidationError,
     ConfigValidationException,
@@ -17,6 +22,7 @@ def collect_validation_errors(validations: list[Result[Any, ValidationError]]) -
     errors = [error for result in validations if isinstance(result, Error) for error in [result.error]]
     return Error(ConfigValidationException(errors)) if errors else Ok(None)
 
+@catch_errors(UrlValidationException, "Invalid URL format")
 def validate_url_format(url: str) -> Result[str, ValidationError]:
     """Validate URL format."""
     try:
@@ -41,54 +47,38 @@ def validate_url_format(url: str) -> Result[str, ValidationError]:
             value=url
         ))
 
+@catch_errors(PathValidationException, "Invalid paths")
 def validate_paths(paths: list[str]) -> Result[list[str], ValidationError]:
     """Validate allowed paths."""
     if not paths:
         return Error(ValidationError(
             field="allowed_paths",
-            message="At least one path must be provided",
+            message="At least one allowed path must be provided",
             value=paths
         ))
-    
-    invalid_paths = [
-        path for path in paths 
-        if not path.startswith('/')
-    ]
-    
-    if invalid_paths:
-        return Error(ValidationError(
-            field="allowed_paths",
-            message="All paths must start with /",
-            value=invalid_paths
-        ))
-    
     return Ok(paths)
 
+@catch_errors(ValidationError, "Invalid numeric value")
 def validate_positive_int(value: int, field: str) -> Result[int, ValidationError]:
     """Validate positive integer."""
-    if value <= 0:
-        return Error(ValidationError(
-            field=field,
-            message="Must be greater than 0",
-            value=value
-        ))
-    return Ok(value)
+    return ensure_type(
+        value,
+        int,
+        field,
+        lambda x: x > 0,
+        f"{field} must be positive"
+    )
 
+@catch_errors(ValidationError, "Invalid timeout value")
 def validate_timeout(value: float) -> Result[float, ValidationError]:
     """Validate timeout value."""
-    if value <= 0:
-        return Error(ValidationError(
-            field="timeout",
-            message="Must be greater than 0",
-            value=value
-        ))
-    if value > 300:  # 5 minutes max
-        return Error(ValidationError(
-            field="timeout",
-            message="Must not exceed 300 seconds",
-            value=value
-        ))
-    return Ok(value)
+    return ensure_type(
+        value,
+        float,
+        "timeout",
+        lambda x: 0 < x <= 300,
+        "Timeout must be between 0 and 300 seconds"
+    )
 
 def validate_content_selector(selector: Optional[str]) -> Result[Optional[str], ValidationError]:
     """Validate content selector if provided."""
@@ -104,7 +94,6 @@ def validate_content_selector(selector: Optional[str]) -> Result[Optional[str], 
             value=selector
         ))
 
-@pipeline
 def validate_scraper_config(
     root_url: str,
     allowed_paths: list[str],

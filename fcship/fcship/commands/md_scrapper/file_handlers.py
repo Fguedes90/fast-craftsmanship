@@ -4,13 +4,13 @@ from typing import Optional, Dict, Any, Protocol, Callable
 from expression import Result, Ok, Error, pipe
 from bs4 import BeautifulSoup
 import markdown
+from fcship.utils.functional import catch_errors_async
 from .exceptions import (
     ContentException,
     ProcessingException,
     capture_exception
 )
 from .types import Content, Filename
-from .result_utils import catch_errors_async
 
 class ContentTransformer(Protocol):
     """Protocol for content transformers."""
@@ -27,42 +27,22 @@ class FileTypeHandler:
 
 class HtmlToMarkdownTransformer:
     """Transform HTML to Markdown."""
+    @catch_errors_async(ContentException, "HTML to Markdown transformation failed")
     async def transform(self, content: str) -> Result[str, ProcessingException]:
         try:
             soup = BeautifulSoup(content, 'html.parser')
-            # Remove script and style elements
-            for script in soup(["script", "style"]):
-                script.decompose()
-            
-            # Get text and clean it
-            text = soup.get_text()
-            lines = (line.strip() for line in text.splitlines())
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = '\n'.join(chunk for chunk in chunks if chunk)
-            
-            return Ok(text)
+            return Ok(soup.get_text())
         except Exception as e:
-            return capture_exception(
-                e,
-                ContentException,
-                "Failed to transform HTML to Markdown"
-            )
+            return Error(ContentException("Failed to parse HTML", e))
 
 class MarkdownTransformer:
     """Transform Markdown to HTML."""
+    @catch_errors_async(ContentException, "Markdown to HTML transformation failed")
     async def transform(self, content: str) -> Result[str, ProcessingException]:
         try:
-            html = markdown.markdown(
-                content,
-                extensions=['extra', 'codehilite']
-            )
-            return Ok(html)
+            return Ok(markdown.markdown(content))
         except Exception as e:
-            return capture_exception(
-                e,
-                ContentException,
-                "Failed to transform Markdown to HTML"
-            )
+            return Error(ContentException("Failed to parse Markdown", e))
 
 class PassthroughTransformer:
     """No transformation, pass content through."""
@@ -72,41 +52,16 @@ class PassthroughTransformer:
 class FileTypeRegistry:
     """Registry of file type handlers."""
     def __init__(self):
-        self.handlers: Dict[str, FileTypeHandler] = {
-            ".html": FileTypeHandler(
-                extension=".html",
-                transformer=PassthroughTransformer(),
-                media_type="text/html"
-            ),
-            ".md": FileTypeHandler(
-                extension=".md",
-                transformer=HtmlToMarkdownTransformer(),
-                media_type="text/markdown"
-            )
-        }
-    
-    def get_handler(self, filename: str) -> Result[FileTypeHandler, ProcessingException]:
-        """Get handler for file extension."""
-        from pathlib import Path
-        ext = Path(filename).suffix.lower()
+        self.handlers: Dict[str, FileTypeHandler] = {}
         
-        if ext not in self.handlers:
-            return Error(ContentException(f"Unsupported file type: {ext}"))
-        
-        return Ok(self.handlers[ext])
+    def register(self, handler: FileTypeHandler) -> None:
+        """Register a file type handler."""
+        self.handlers[handler.extension] = handler
     
-    def register_handler(
-        self,
-        extension: str,
-        transformer: ContentTransformer,
-        media_type: str
-    ) -> None:
-        """Register a new file type handler."""
-        self.handlers[extension.lower()] = FileTypeHandler(
-            extension=extension,
-            transformer=transformer,
-            media_type=media_type
-        )
+    def get_handler(self, filename: str) -> Optional[FileTypeHandler]:
+        """Get handler for file type."""
+        ext = filename.split('.')[-1].lower()
+        return self.handlers.get(ext)
 
 @catch_errors_async(ContentException, "Failed to process content")
 async def process_content(
@@ -114,14 +69,14 @@ async def process_content(
     filename: Filename,
     registry: FileTypeRegistry
 ) -> Result[tuple[Content, Filename], ProcessingException]:
-    """Process content using appropriate handler."""
-    handler_result = registry.get_handler(filename)
-    if isinstance(handler_result, Error):
-        return handler_result
+    """Process content based on file type."""
+    handler = registry.get_handler(filename)
+    if not handler:
+        return Ok((content, filename))
+    
+    transformed = await handler.transformer.transform(content)
+    if isinstance(transformed, Error):
+        return transformed
         
-    handler = handler_result.value
-    transform_result = await handler.transformer.transform(content)
-    if isinstance(transform_result, Error):
-        return transform_result
-        
-    return Ok((Content(transform_result.value), filename))
+    new_filename = f"{filename.rsplit('.', 1)[0]}.{handler.extension}"
+    return Ok((Content(transformed.value), Filename(new_filename)))

@@ -1,8 +1,13 @@
 """Worker module with functional approach."""
-import asyncio
-from expression import Result, Ok, Error
+from expression import Result, pipe
 from typing import Any
-from fcship.commands.md_scrapper.exceptions import ProcessingException
+from fcship.utils.functional import (
+    pipe_async,
+    ensure_async,
+    catch_errors_async,
+    handle_error
+)
+from .exceptions import ProcessingException, NetworkException
 from .url_utils import normalize_url, validate_url
 from .content_manager import extract_content, save_content
 from .url_tracker import (
@@ -21,12 +26,7 @@ from .types import (
     NetworkException,
     make_error
 )
-from .functional_utils import (
-    pipe_async,
-    ensure_async
-)
 from .retry import retry_with_timeout
-from .result_utils import catch_errors_async
 from .context import ScraperContext
 
 @catch_errors_async(NetworkException, "Failed to access page")

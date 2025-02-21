@@ -2,12 +2,12 @@
 import asyncio
 from typing import set, dict, list, tuple, Any
 from expression import Result, Ok, pipe
-from .url_utils import normalize_url, join_urls, validate_url
-from .functional_utils import (
+from fcship.utils.functional import (
     pipe_async,
     log_and_continue,
     ensure_async
 )
+from .url_utils import normalize_url, join_urls, validate_url
 from .types import (
     Url,
     Depth,

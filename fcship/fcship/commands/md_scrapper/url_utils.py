@@ -1,14 +1,18 @@
 """URL handling with Railway Oriented Programming."""
-from typing import list
+from typing import List
 from urllib.parse import urlparse, urljoin
 from expression import Result, Ok
+from fcship.utils.functional import (
+    safe_cast,
+    handle_error
+)
 from .types import (
     Url,
     ValidationError,
     make_error,
 )
 
-def validate_url(url: Url, base_url: str, allowed_paths: list[str]) -> Result[bool, Exception]:
+def validate_url(url: Url, base_url: str, allowed_paths: List[str]) -> Result[bool, Exception]:
     """Validate URL using ROP."""
     if not url or not isinstance(url, str):
         return Ok(False)

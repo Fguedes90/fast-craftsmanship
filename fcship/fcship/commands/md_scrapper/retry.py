@@ -3,9 +3,8 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 from expression import Result, Ok, Error
+from fcship.utils.functional import catch_errors_async
 from .exceptions import ProcessingException, NetworkException
-from .result_utils import catch_errors_async
-from .types import Url
 
 T = TypeVar('T')
 Operation = Callable[..., Awaitable[Result[T, ProcessingException]]]
