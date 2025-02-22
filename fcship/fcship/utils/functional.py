@@ -1,17 +1,15 @@
 """Functional programming utilities."""
 from collections.abc import Awaitable, Callable, Sequence
-from typing import TypeVar, Any, overload, ParamSpec
+from typing import TypeVar, Any, ParamSpec
 import asyncio
 import functools
-from expression import Result, Ok, Error, effect, pipe, option, Option
+from expression import Result, Ok, Error, Option
 
 A = TypeVar('A')
 B = TypeVar('B')
 C = TypeVar('C')
 P = ParamSpec('P')
 
-## OBS.: O decorator `catch_errors` é redundante em face de `@effect.try_`.
-## Recomenda-se utilizar diretamente `@effect.try_` nas funções.
 
 def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]:
     """
@@ -82,6 +80,4 @@ def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
     Se o Option não contiver valor (ou seja, for None), retorna um Error com a mensagem
     de erro fornecida. Caso contenha valor, retorna um Ok contendo o valor.
     """
-    if opt.is_none():
-        return Error(ValueError(error_msg))
-    return Ok(opt.value)
+    return Error(ValueError(error_msg)) if opt.is_none() else Ok(opt.value)

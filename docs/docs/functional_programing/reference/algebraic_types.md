@@ -147,6 +147,7 @@ def safe_parse(s: str) -> Option[ParseResult]:
 ```
 
 # Union with Result
+```python
 @union
 class ValidationError:
     def Missing(field: str): ...
@@ -301,4 +302,4 @@ def test_type_properties(x: int):
     
     # Union properties
     state = TaskState.Running(x/100)
-    assert "%" in process_task(state)
+    assert "%" in process_task(state*)*
