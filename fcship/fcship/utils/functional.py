@@ -3,7 +3,8 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar, Any, ParamSpec
 import asyncio
 import functools
-from expression import Result, Ok, Error, Option, Block
+from expression import Result, Ok, Error, Option
+from expression.collections import Block, Seq
 
 A = TypeVar('A')
 B = TypeVar('B')
@@ -77,3 +78,16 @@ def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
     de erro fornecida. Caso contenha valor, retorna um Ok contendo o valor.
     """
     return Error(ValueError(error_msg)) if opt.is_none() else Ok(opt.value)
+
+def catch_errors(fn: Callable[P, A]) -> Callable[P, Result[A, Exception]]:
+    """
+    Wraps a function to catch any exceptions and return them as Result.Error.
+    If the function succeeds, returns Result.Ok with the value.
+    """
+    @functools.wraps(fn)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[A, Exception]:
+        try:
+            return Ok(fn(*args, **kwargs))
+        except Exception as e:
+            return Error(e)
+    return wrapped

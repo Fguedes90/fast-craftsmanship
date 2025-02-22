@@ -1,5 +1,5 @@
 """Shared utilities for CLI commands."""
-from .file_utils import ensure_directory, FileCreationTracker, file_creation_status, create_files
+from .file_utils import ensure_directory, FileCreationTracker, create_files
 from .validation import validate_operation
 from .error_handling import handle_command_errors
 from .ui import success_message, error_message
@@ -11,12 +11,11 @@ from .functional import (
     tap, 
     tap_async, 
     lift_option,
-    )
+)
 
 __all__ = [
     "ensure_directory",
     "FileCreationTracker",
-    "file_creation_status",
     "create_files",
     "validate_operation",
     "handle_command_errors",
