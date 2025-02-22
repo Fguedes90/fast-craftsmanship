@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from contextlib import contextmanager
-from expression import Try, effect, Result
+from expression import Try, effect, Result, Ok, Error
 import typer
 
 console = Console()
@@ -61,8 +61,8 @@ def create_files(files: dict[str, str], base_path: str = "") -> Result[None, Exc
         base_path: Caminho base a ser prefixado (opcional)
 
     Retorna:
-        Result.ok(None) se todos os arquivos forem criados com sucesso,
-        ou Result.error com o erro encontrado.
+        Ok(None) se todos os arquivos forem criados com sucesso,
+        ou Error com o erro encontrado.
     """
     with file_creation_status() as status:
         results = [
@@ -80,13 +80,13 @@ def validate_operation(
     """Valida a operação e os argumentos de forma funcional.
 
     Retorna:
-        Result.ok(operation) se válido ou Result.error com BadParameter se inválido.
+        Ok(operation) se válido ou Error com BadParameter se inválido.
     """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        return Result.error(typer.BadParameter(f"Invalid operation: {operation}. Valid operations: {valid_ops}"))
+        return Error(typer.BadParameter(f"Invalid operation: {operation}. Valid operations: {valid_ops}"))
 
     if requires_name and operation in requires_name and not name:
-        return Result.error(typer.BadParameter(f"Operation '{operation}' requires a name parameter"))
+        return Error(typer.BadParameter(f"Operation '{operation}' requires a name parameter"))
 
-    return Result.ok(operation)
+    return Ok(operation)

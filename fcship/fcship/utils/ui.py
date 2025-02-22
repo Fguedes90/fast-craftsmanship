@@ -1,7 +1,7 @@
 """UI utilities for CLI output."""
 from rich.console import Console
 from rich.panel import Panel
-from expression import Result, Ok, effect, Try
+from expression import Result, Ok, Error, effect, Try
 import typer
 
 console = Console()
@@ -46,12 +46,12 @@ def validate_operation(
     """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        return Result.error(typer.BadParameter(
+        return Error(typer.BadParameter(
             f"Invalid operation: {operation}. Valid operations: {valid_ops}"
         ))
 
     if requires_name and operation in requires_name and not name:
-        return Result.error(typer.BadParameter(
+        return Error(typer.BadParameter(
             f"Operation '{operation}' requires a name parameter"
         ))
     return Ok(operation)
