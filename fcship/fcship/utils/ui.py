@@ -89,3 +89,15 @@ def confirm_action(prompt: str) -> Result[bool, Exception]:
         Ok(True/False) if the confirmation is successful, or an Error if an exception occurs.
     """
     return Try.apply(lambda: typer.confirm(prompt))
+    
+def display_rule(message: str, style: str = "blue") -> Result[None, Exception]:
+    """Display a horizontal rule with a centered message using Rich's console.rule.
+    
+    Args:
+        message: The text to display in the rule.
+        style: The style to apply to the rule (default: "blue").
+    
+    Returns:
+        A Result with None if the rule is displayed successfully, or an error.
+    """
+    return Try.apply(lambda: console.rule(message, style=style))
