@@ -79,13 +79,11 @@ def validate_operation(
     """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        raise typer.BadParameter(
+        return Error(typer.BadParameter(
             f"Operação inválida: {operation}. Operações válidas: {valid_ops}"
-        )
-
+        ))
     if requires_name is not None and operation in requires_name and not name:
-        raise typer.BadParameter(
+        return Error(typer.BadParameter(
             f"A operação '{operation}' requer o parâmetro 'name'."
-        )
-
-    return operation
+        ))
+    return Ok(operation)

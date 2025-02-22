@@ -61,17 +61,15 @@ def validate_operation(
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> Result[str, str]:
+) -> Result[str, Exception]:
     """Validate command operation and arguments using Railway-Oriented Programming pattern."""
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        return Result.error(
+        return Error(typer.BadParameter(
             f"Invalid operation: {operation}. Valid operations: {valid_ops}"
-        )
-
+        ))
     if requires_name and operation in requires_name and not name:
-        return Result.error(
+        return Error(typer.BadParameter(
             f"Operation '{operation}' requires a name parameter"
-        )
-
-    return Result.ok(operation)
+        ))
+    return Ok(operation)

@@ -49,7 +49,6 @@ def validate_operation(
         return Error(typer.BadParameter(
             f"Invalid operation: {operation}. Valid operations: {valid_ops}"
         ))
-
     if requires_name and operation in requires_name and not name:
         return Error(typer.BadParameter(
             f"Operation '{operation}' requires a name parameter"
