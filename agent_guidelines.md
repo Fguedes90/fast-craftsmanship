@@ -144,6 +144,8 @@ Este documento contém as diretrizes obrigatórias para que o agente LLM produza
   As chamadas assíncronas devem sempre envolver **Effect** com conversão via `.to_awaitable()`.
 - **Consistência:**  
   Siga rigorosamente as nomenclaturas e estruturas definidas na documentação. Arquivos READ ONLY não devem ser alterados.
+- **Depuração e Monitoramento de Performance:**  
+  Utilize funções utilitárias como `debug()`, `memoize` e `time_execution` para facilitar a depuração e o monitoramento da performance. Certifique-se de remover ou desabilitar chamadas de debug antes de colocar o código em produção.
 
 ---
 
