@@ -55,3 +55,37 @@ def validate_operation(
             f"Operation '{operation}' requires a name parameter"
         ))
     return Ok(operation)
+
+def warning_message(message: str) -> Result[None, Exception]:
+    """Display a warning message using Result type with yellow style."""
+    return Try.apply(lambda: display_message(message, "yellow"))
+
+def display_table(headers: list[str], rows: list[list[str]], title: str | None = None) -> Result[None, Exception]:
+    """Display a table using Rich for formatting.
+    
+    Args:
+        headers: List of table headers.
+        rows: List of table rows, each row is a list of strings.
+        title: Optional title for the table.
+    
+    Returns:
+        A Result with None if successful, or an error.
+    """
+    from rich.table import Table
+    def _display() -> None:
+        table = Table(title=title) if title else Table()
+        list(map(lambda h: table.add_column(h), headers))
+        list(map(lambda row: table.add_row(*row), rows))
+        console.print(table)
+    return Try.apply(_display)
+
+def confirm_action(prompt: str) -> Result[bool, Exception]:
+    """Display a confirmation prompt and return the boolean result as a Result.
+    
+    Args:
+        prompt: The message to display for confirmation.
+    
+    Returns:
+        Ok(True/False) if the confirmation is successful, or an Error if an exception occurs.
+    """
+    return Try.apply(lambda: typer.confirm(prompt))
