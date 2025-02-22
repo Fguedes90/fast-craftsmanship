@@ -18,7 +18,9 @@ def ensure_directory(path: Path) -> None:
 class FileCreationTracker:
     """Track file creation progress and display it in a table."""
     def __init__(self):
-        self.files: dict[str, str] = {}
+        from expression import Map
+
+        self.files: Map[str, str] = Map.of_dict({})
 
     def add_file(self, path: str, status: str = "Created") -> None:
         """Add a file to track."""

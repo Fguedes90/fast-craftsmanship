@@ -36,11 +36,7 @@ async def collect_results(results: Sequence[Awaitable[Result[A, Exception]]]) ->
 def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence[A], Exception]:
     """Convert a sequence of Results into a Result of sequence.
     Short-circuits on first Error."""
-    values: list[A] = []
-    for result in results:
-        if result.is_error():
-            return result
-        values.append(result.ok)
+    values = Block.of_seq([result.ok for result in results if not result.is_error()])
     return Ok(values)
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
