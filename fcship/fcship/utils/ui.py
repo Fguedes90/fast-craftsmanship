@@ -1,7 +1,7 @@
 """UI utilities for CLI output."""
+from expression import Result, Ok, Error, effect, Try
 from rich.console import Console
 from rich.panel import Panel
-from expression import Result, Ok, Error, effect, Try
 import typer
 
 console = Console()

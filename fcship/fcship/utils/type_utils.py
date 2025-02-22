@@ -1,8 +1,8 @@
 """Utilitários para manipulação de tipos."""
+from expression import Result, Ok, Error, pipe, Try, effect
 import typer
 from collections.abc import Callable
 from typing import TypeVar, Any
-from expression import Result, Ok, Error, pipe, Try, effect
 
 T = TypeVar('T')
 
