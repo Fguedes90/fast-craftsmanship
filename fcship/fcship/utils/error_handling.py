@@ -13,8 +13,10 @@ def handle_command_errors(fn: Callable[..., T]) -> Callable[..., T]: ...
 @overload
 def handle_command_errors(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]: ...
 
+from fcship.fcship.utils.ui import display_message
+
 def _handle_error(e: Exception) -> None:
-    typer.echo(f"Error: {str(e)}")
+    display_message(f"Error: {str(e)}", style="error")
     raise typer.Exit(1)
 
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
