@@ -19,26 +19,22 @@ def _handle_error(e: Exception) -> None:
 
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
     """Decorator to handle command errors gracefully using Expression's Try effect."""
-
-    @effect.try_[T]()
-    async def async_wrapper(*args: Any, **kwargs: Any) -> T:
-        try:
-            return await fn(*args, **kwargs)
-        except typer.Exit:
-            raise
-        except Exception as e:
-            _handle_error(e)
-
-    @effect.try_[T]()
-    def sync_wrapper(*args: Any, **kwargs: Any) -> T:
-        try:
-            return fn(*args, **kwargs)
-        except typer.Exit:
-            raise
-        except Exception as e:
-            _handle_error(e)
-
-    return async_wrapper if asyncio.iscoroutinefunction(fn) else sync_wrapper
+    
+    def handle_result_error(error: Exception) -> T:
+        if isinstance(error, typer.Exit):
+            raise error
+        return _handle_error(error)
+    
+    if asyncio.iscoroutinefunction(fn):
+        async def wrapper(*args: Any, **kwargs: Any) -> T:
+            result = await effect.try_(fn)(*args, **kwargs)
+            return result.match(lambda value: value, handle_result_error)
+        return wrapper
+    else:
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            result = effect.try_(fn)(*args, **kwargs)
+            return result.match(lambda value: value, handle_result_error)
+        return wrapper
 
 def validate_operation(
     operation: str,
