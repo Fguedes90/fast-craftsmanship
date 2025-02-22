@@ -173,3 +173,19 @@ Este documento estabelece o método único e correto para cada situação:
 - **Utilitários:** Use as funções e decorators como option_to_result, sequence_results, catch_errors e FunctionalLogger.
 
 Siga este documento rigorosamente para garantir a conformidade com os padrões do projeto sem ambiguidades ou opções alternativas.
+
+## 7. Referências
+
+Para mais informações sobre os assuntos abordados neste documento, consulte os seguintes arquivos de referência:
+
+- [Introdução à Programação Funcional com Expression Library](docs/docs/functional_programing/tutorial/introduction.md)
+- [Tutorial de Containers](docs/docs/functional_programing/tutorial/containers.md)
+- [Tutorial de Efeitos e Tratamento de Erros](docs/docs/functional_programing/tutorial/effects.md)
+- [Referência - Block](docs/docs/functional_programing/reference/block.md)
+- [Referência - Map](docs/docs/functional_programing/reference/map.md)
+- [Referência - Option](docs/docs/functional_programing/reference/option.md)
+- [Referência - Result](docs/docs/functional_programing/reference/result.md)
+- [Referência - Union](docs/docs/functional_programing/reference/union.md)
+- [Referência - Pipe](docs/docs/functional_programing/reference/pipe.md)
+- [Referência - Seq](docs/docs/functional_programing/reference/seq.md)
+- [Ferramentas de Depuração](docs/docs/functional_programing/reference/debugging.md)
