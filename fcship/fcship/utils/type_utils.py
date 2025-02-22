@@ -2,7 +2,7 @@
 import typer
 from collections.abc import Callable
 from typing import TypeVar, Any
-from expression import Result, pipe, Try, effect
+from expression import Result, Ok, Error, pipe, Try, effect
 
 T = TypeVar('T')
 
@@ -59,7 +59,7 @@ def validate_operation(
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> str:
+) -> Result[str, Exception]:
     """
     Valida uma operação de comando e os seus argumentos, garantindo que a operação
     esteja na lista de operações válidas e que, se necessário, o parâmetro 'name' seja fornecido.

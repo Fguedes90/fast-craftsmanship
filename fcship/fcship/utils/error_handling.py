@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar, Any, overload
 import asyncio
 import typer
-from expression import Result, pipe, effect
+from expression import Result, Ok, Error, pipe, effect
 
 T = TypeVar('T')
 
@@ -23,7 +23,7 @@ def _handle_error(e: Exception) -> Result[Any, str]:
 
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
     """Decorator to handle command errors using Railway-Oriented Programming pattern.
-    
+
     Converts exceptions to Result type and wraps side effects in effect monad.
     Following the functional programming guidelines for error handling.
     """
