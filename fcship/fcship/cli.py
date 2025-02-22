@@ -10,7 +10,7 @@ from .commands.repo import repo
 from .commands.project import project
 from .commands.test import test
 from .commands.verify import verify
-from .commands.docs import docs
+from .commands.docs_downloader import docs
 
 console = Console()
 
