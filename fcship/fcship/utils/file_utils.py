@@ -6,6 +6,7 @@ from rich.live import Live
 from rich.table import Table
 from contextlib import contextmanager
 from expression import Try, effect, Result
+import typer
 
 console = Console()
 
