@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from contextlib import contextmanager
-from expression import Try, effect
+from expression import Try, effect, Result
 
 console = Console()
 
@@ -52,34 +52,40 @@ def create_file(path: Path, content: str, status_tracker: FileCreationTracker) -
     path.write_text(content)
     status_tracker.add_file(str(path))
 
-def create_files(files: dict[str, str], base_path: str = "") -> None:
-    """Create multiple files with their contents.
+def create_files(files: dict[str, str], base_path: str = "") -> Result[None, Exception]:
+    """Cria múltiplos arquivos e compõe os efeitos de forma funcional.
 
     Args:
-        files: Dictionary mapping file paths to their contents
-        base_path: Optional base path to prepend to all file paths
+        files: Dicionário que mapeia caminhos para conteúdos
+        base_path: Caminho base a ser prefixado (opcional)
+
+    Retorna:
+        Result.ok(None) se todos os arquivos forem criados com sucesso,
+        ou Result.error com o erro encontrado.
     """
     with file_creation_status() as status:
-        for path, content in files.items():
-            full_path = Path(base_path) / path
-            Try.apply(lambda: create_file(full_path, content, status))
+        results = [
+            Try.apply(lambda: create_file(Path(base_path) / path, content, status))
+            for path, content in files.items()
+        ]
+        return Result.sequence(results).map(lambda _: None)
 
 def validate_operation(
     operation: str,
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> str:
-    """Validate command operation and arguments using Expression's Try effect."""
+) -> Result[str, Exception]:
+    """Valida a operação e os argumentos de forma funcional.
+
+    Retorna:
+        Result.ok(operation) se válido ou Result.error com BadParameter se inválido.
+    """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        raise typer.BadParameter(
-            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
-        )
+        return Result.error(typer.BadParameter(f"Invalid operation: {operation}. Valid operations: {valid_ops}"))
 
     if requires_name and operation in requires_name and not name:
-        raise typer.BadParameter(
-            f"Operation '{operation}' requires a name parameter"
-        )
+        return Result.error(typer.BadParameter(f"Operation '{operation}' requires a name parameter"))
 
-    return operation
+    return Result.ok(operation)
