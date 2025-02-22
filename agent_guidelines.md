@@ -147,6 +147,19 @@ Este documento contém as diretrizes obrigatórias para que o agente LLM produza
 
 ---
 
+## 6. Legibilidade e Clareza
+
+Para assegurar que o código seja de fácil entendimento e manutenção, o agente deve observar as seguintes diretrizes adicionais:
+- **Quebre funções grandes:** Divida a lógica complexa em funções pequenas, reutilizáveis e com responsabilidades bem definidas.
+- **Use funções nomeadas:** Evite o uso de lambdas inline; defina funções com nomes descritivos para aumentar a clareza.
+- **Garanta idempotência:** Certifique-se de que funções puras retornem sempre o mesmo resultado para os mesmos argumentos.
+- **Prefira operações funcionais a loops imperativos:** Utilize métodos como `map()`, `filter()` e `reduce()` em vez de loops `for` ou `while` sempre que possível.
+- **Consistência na nomenclatura:** Use nomes de funções e variáveis que sejam claros e consistentes ao longo do código.
+- **Evite funções lambdas aninhadas:** Atribua lambdas a variáveis antes de usá-las, evitando o aninhamento excessivo.
+- **Centralize transformações de dados:** Realize as transformações iniciais no começo do fluxo de dados para melhorar a legibilidade.
+- **Documente transformações complexas:** Explique detalhadamente funções e cadeias de transformação quando estas forem complexas.
+- **Utilize recursão quando apropriado:** Prefira recursão para iterações que não requeiram loops imperativos.
+
 ## Conclusão
 
 Este documento estabelece o método único e correto para cada situação:
