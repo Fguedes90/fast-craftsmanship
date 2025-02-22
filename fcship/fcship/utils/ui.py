@@ -2,6 +2,7 @@
 from rich.console import Console
 from rich.panel import Panel
 from expression import Result, Ok, effect, Try
+import typer
 
 console = Console()
 
@@ -36,17 +37,21 @@ def validate_operation(
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> str:
-    """Validate command operation and arguments using Expression's Try effect."""
+) -> Result[str, Exception]:
+    """Valida a operação do comando e seus argumentos utilizando o tipo Result para tratamento de erro.
+
+    Returns:
+        Ok(operation) se a validação for bem-sucedida; caso contrário,
+        retorna um Error com o typer.BadParameter adequado.
+    """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        raise typer.BadParameter(
+        return Result.error(typer.BadParameter(
             f"Invalid operation: {operation}. Valid operations: {valid_ops}"
-        )
+        ))
 
     if requires_name and operation in requires_name and not name:
-        raise typer.BadParameter(
+        return Result.error(typer.BadParameter(
             f"Operation '{operation}' requires a name parameter"
-        )
-
-    return operation
+        ))
+    return Ok(operation)
