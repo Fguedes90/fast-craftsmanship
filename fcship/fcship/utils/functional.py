@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar, Any, ParamSpec
 import asyncio
 import functools
-from expression import Result, Ok, Error, Option
+from expression import Result, Ok, Error, Option, Block
 
 A = TypeVar('A')
 B = TypeVar('B')

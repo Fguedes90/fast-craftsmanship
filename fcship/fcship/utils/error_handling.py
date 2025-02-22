@@ -19,7 +19,7 @@ def _handle_error(e: Exception) -> Result[Any, str]:
     """Convert exception to Result.Error and display error message."""
     error_msg = str(e)
     display_message(f"Error: {error_msg}", style="error")
-    return Result.error(error_msg)
+    return Error(error_msg)
 
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
     """Decorator to handle command errors using Railway-Oriented Programming pattern.
