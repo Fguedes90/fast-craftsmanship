@@ -2,7 +2,7 @@
 2️⃣ **Quebre funções grandes.** Divida lógica complexa em funções pequenas e reutilizáveis.  
 3️⃣ **Use funções nomeadas.** Evite lambdas inline em favor de funções nomeadas para maior clareza.  
 4️⃣ **Mantenha a tipagem explícita.** Use anotações de tipo para facilitar a leitura e evitar erros.  
-5️⃣ **Encadeie operações de forma clara.** Use `pipe()`, `map()`, `filter()` e `reduce()` para evitar aninhamento.  
+5️⃣ **Encadeie operações de forma clara.** Use `bind()`, `pipe()`, `map()`, `filter()` e `reduce()` para evitar aninhamento.  
 6️⃣ **Faça código idempotente.** Garanta que funções sempre retornem o mesmo resultado para os mesmos argumentos.  
 7️⃣ **Evite efeitos colaterais.** Não altere variáveis externas ou estados globais.  
 8️⃣ **Priorize a imutabilidade.** Use estruturas de dados imutáveis sempre que possível.  

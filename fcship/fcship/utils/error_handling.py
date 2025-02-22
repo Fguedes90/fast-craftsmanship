@@ -1,9 +1,9 @@
-"""Error handling utilities."""
+"""Error handling utilities following Railway-Oriented Programming pattern."""
 from collections.abc import Awaitable, Callable
 from typing import TypeVar, Any, overload
 import asyncio
 import typer
-from expression import effect
+from expression import Result, pipe, effect
 
 T = TypeVar('T')
 
@@ -15,45 +15,63 @@ def handle_command_errors(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awai
 
 from fcship.utils.ui import display_message
 
-def _handle_error(e: Exception) -> None:
-    display_message(f"Error: {str(e)}", style="error")
-    raise typer.Exit(1)
+def _handle_error(e: Exception) -> Result[Any, str]:
+    """Convert exception to Result.Error and display error message."""
+    error_msg = str(e)
+    display_message(f"Error: {error_msg}", style="error")
+    return Result.error(error_msg)
 
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
-    """Decorator to handle command errors gracefully using Expression's Try effect."""
+    """Decorator to handle command errors using Railway-Oriented Programming pattern.
     
-    def handle_result_error(error: Exception) -> T:
-        if isinstance(error, typer.Exit):
-            raise error
-        return _handle_error(error)
-    
+    Converts exceptions to Result type and wraps side effects in effect monad.
+    Following the functional programming guidelines for error handling.
+    """
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            result = await effect.try_(fn)(*args, **kwargs)
-            return result.match(lambda value: value, handle_result_error)
+            # Convert async function to effect and handle errors
+            effect_result = await effect.from_async(fn)(*args, **kwargs).to_awaitable()
+            return pipe(
+                effect_result,
+                lambda r: r.match(
+                    lambda value: value,
+                    lambda error: _handle_and_exit(error)
+                )
+            )
         return wrapper
     else:
         def wrapper(*args: Any, **kwargs: Any) -> T:
-            result = effect.try_(fn)(*args, **kwargs)
-            return result.match(lambda value: value, handle_result_error)
+            # Convert sync function to effect and handle errors
+            return pipe(
+                effect.try_(fn)(*args, **kwargs),
+                lambda r: r.match(
+                    lambda value: value,
+                    lambda error: _handle_and_exit(error)
+                )
+            )
         return wrapper
+
+def _handle_and_exit(error: Exception) -> None:
+    """Handle error and exit with error code."""
+    _ = _handle_error(error)
+    raise typer.Exit(1)
 
 def validate_operation(
     operation: str,
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> str:
-    """Validate command operation and arguments using Expression's Try effect."""
+) -> Result[str, str]:
+    """Validate command operation and arguments using Railway-Oriented Programming pattern."""
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        raise typer.BadParameter(
+        return Result.error(
             f"Invalid operation: {operation}. Valid operations: {valid_ops}"
         )
 
     if requires_name and operation in requires_name and not name:
-        raise typer.BadParameter(
+        return Result.error(
             f"Operation '{operation}' requires a name parameter"
         )
 
-    return operation
+    return Result.ok(operation)
