@@ -4,10 +4,6 @@ import asyncio
 import typer
 from fcship.utils.error_handling import handle_command_errors
 
-import pytest
-import typer
-from fcship.utils.error_handling import handle_command_errors
-
 @pytest.mark.parametrize("exc", [ValueError("test error"), typer.Exit(1)])
 def test_handle_command_errors_sync_failure(exc: Exception) -> None:
     """Testa que funções síncronas decoradas transformam quaisquer exceções em typer.Exit."""
