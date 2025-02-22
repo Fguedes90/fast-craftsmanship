@@ -24,7 +24,7 @@ As funções presentes em `fcship/fcship/utils/file_utils.py` auxiliam na manipu
 
 ```python
 from pathlib import Path
-from fcship.fcship.utils.file_utils import ensure_directory, create_files
+from .fcship.utils.file_utils import ensure_directory, create_files
 
 # Garante que o diretório exista
 ensure_directory(Path("/caminho/para/arq.txt"))
@@ -51,7 +51,7 @@ As funções do módulo `fcship/fcship/utils/type_utils.py` garantem a conversã
 **Exemplo de Uso:**
 
 ```python
-from fcship.fcship.utils.type_utils import ensure_type, map_type
+from .fcship.utils.type_utils import ensure_type, map_type
 from expression import Ok
 
 # Valida e converte um valor para inteiro
@@ -83,7 +83,7 @@ O módulo `fcship/fcship/utils/functional.py` reúne funções para composição
 **Exemplo de Uso:**
 
 ```python
-from fcship.fcship.utils.functional import lift_option, tap
+from .fcship.utils.functional import lift_option, tap
 
 def get_optional_value(key: str):
     from expression import Option
@@ -115,7 +115,7 @@ O módulo `fcship/fcship/utils/error_handling.py` fornece ferramentas para captu
 
 ```python
 import typer
-from fcship.fcship.utils.error_handling import handle_command_errors, validate_operation
+from .fcship.utils.error_handling import handle_command_errors, validate_operation
 
 @handle_command_errors
 def executar_comando(operation: str, name: str | None = None) -> None:
