@@ -23,12 +23,6 @@ def test_handle_command_errors_sync_success():
     result = success_fn()
     assert result == "success"
 
-
-import pytest
-import typer
-import asyncio
-from fcship.utils.error_handling import handle_command_errors
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exc", [ValueError("test error"), typer.Exit(1)])
 async def test_handle_command_errors_async_failure(exc: Exception) -> None:
