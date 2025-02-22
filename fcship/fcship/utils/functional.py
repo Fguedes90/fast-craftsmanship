@@ -2,6 +2,7 @@
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar, Any, overload, ParamSpec
 import asyncio
+import functools
 from expression import Result, Ok, Error, effect, pipe, option, Option
 
 A = TypeVar('A')
@@ -13,9 +14,15 @@ P = ParamSpec('P')
 ## Recomenda-se utilizar diretamente `@effect.try_` nas funções.
 
 def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]:
-    """Lift an Option-returning function into a Result-returning function."""
+    """
+    Eleva uma função que retorna um Option para uma função que retorna um Result.
+    
+    Se a função original retornar um Option com valor (Some), converte para Ok(valor).
+    Caso contrário, retorna um Error com a mensagem "No value present".
+    """
+    @functools.wraps(fn)
     def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[A, Exception]:
-        opt = fn(*args, **kwargs)
+        opt: Option[A] = fn(*args, **kwargs)
         return option_to_result(opt, "No value present")
     return wrapped
 
@@ -39,14 +46,26 @@ def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence
     return Ok(values)
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
-    """Create a function that runs a side effect but returns the original value."""
+    """
+    Cria uma função que executa um efeito colateral e retorna o mesmo valor inalterado.
+    
+    Útil para inserir chamadas de debug, log ou outras operações de side effect em cadeias
+    de transformações puras.
+    """
+    @functools.wraps(fn)
     def tapped(value: A) -> A:
         fn(value)
         return value
     return tapped
 
 def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
-    """Create an async function that runs a side effect but returns the original value."""
+    """
+    Cria uma função assíncrona que executa um efeito colateral e retorna o mesmo valor inalterado.
+    
+    Essa função é útil para incorporar operações assíncronas (como log assíncrono ou
+    atualização de métricas) em cadeias de operações.
+    """
+    @functools.wraps(fn)
     def tapped(value: A) -> Awaitable[A]:
         async def inner() -> A:
             await fn(value)
@@ -57,7 +76,12 @@ def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
 from expression import Nothing  # adicione se necessário
 
 def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
-    """Converte um Option em Result, retornando um Error com a mensagem fornecida caso seja Nothing."""
-    if opt is Nothing:
+    """
+    Converte uma instância de Option em um Result.
+    
+    Se o Option não contiver valor (ou seja, for None), retorna um Error com a mensagem
+    de erro fornecida. Caso contenha valor, retorna um Ok contendo o valor.
+    """
+    if opt.is_none():
         return Error(ValueError(error_msg))
     return Ok(opt.value)
