@@ -1,4 +1,5 @@
-"""Type handling utilities."""
+"""Utilitários para manipulação de tipos."""
+import typer
 from collections.abc import Callable
 from typing import TypeVar, Any
 from expression import Result, pipe, Try, effect
@@ -12,33 +13,46 @@ def ensure_type(
     type_name: str,
     validation_fn: Callable[[Any], bool] | None = None,
 ) -> T:
-    """Ensure a value satisfies type and validation requirements using Expression's Try effect.
+    """
+    Garante que um valor atenda aos requisitos de tipo e validação.
 
     Args:
-        value: Value to validate and cast
-        type_constructor: Function to create the type
-        type_name: Name of the type for error messages
-        validation_fn: Optional validation function
-    """
-    if validation_fn and not validation_fn(value):
-        raise ValueError(f"Invalid {type_name}")
+        value: Valor a ser validado e convertido.
+        type_constructor: Função para construir o tipo desejado.
+        type_name: Nome do tipo, usado nas mensagens de erro.
+        validation_fn: Função opcional para validar o valor.
 
+    Returns:
+        O valor convertido para o tipo especificado.
+
+    Raises:
+        ValueError: Se a função de validação indicar que o valor é inválido.
+    """
+    if validation_fn is not None and not validation_fn(value):
+        raise ValueError(f"Valor inválido para {type_name}")
     return type_constructor(value)
 
 def map_type(
     f: Callable[[str], Result[str, Exception]],
     type_constructor: Callable[[str], T]
 ) -> Callable[[T], Result[T, Exception]]:
-    """Map a function over a type while preserving its type.
+    """
+    Aplica uma função a um valor (convertido para string) e reconstrói o tipo,
+    preservando a tipagem original.
 
     Args:
-        f: Function to map over the value
-        type_constructor: Constructor for the type
+        f: Função que transforma uma string em um Result contendo uma string ou uma exceção.
+        type_constructor: Construtor para converter a string de volta para o tipo desejado.
+
+    Returns:
+        Uma função que, dado um valor do tipo T, retorna um Result[T, Exception].
     """
-    return lambda x: pipe(
-        f(str(x)),
-        Try.map(type_constructor)
-    )
+    def mapper(x: T) -> Result[T, Exception]:
+        return pipe(
+            f(str(x)),
+            Try.map(type_constructor)
+        )
+    return mapper
 
 def validate_operation(
     operation: str,
@@ -46,16 +60,32 @@ def validate_operation(
     name: str | None = None,
     requires_name: list[str] | None = None
 ) -> str:
-    """Validate command operation and arguments using Expression's Try effect."""
+    """
+    Valida uma operação de comando e os seus argumentos, garantindo que a operação
+    esteja na lista de operações válidas e que, se necessário, o parâmetro 'name' seja fornecido.
+
+    Args:
+        operation: Operação a ser validada.
+        valid_operations: Lista das operações consideradas válidas.
+        name: Nome associado à operação (opcional).
+        requires_name: Lista de operações que exigem o parâmetro 'name'.
+
+    Returns:
+        A própria operação, se for válida.
+
+    Raises:
+        typer.BadParameter: Se a operação não for válida ou se faltar o parâmetro 'name'
+                            para operações que o requerem.
+    """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
         raise typer.BadParameter(
-            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+            f"Operação inválida: {operation}. Operações válidas: {valid_ops}"
         )
 
-    if requires_name and operation in requires_name and not name:
+    if requires_name is not None and operation in requires_name and not name:
         raise typer.BadParameter(
-            f"Operation '{operation}' requires a name parameter"
+            f"A operação '{operation}' requer o parâmetro 'name'."
         )
 
     return operation
