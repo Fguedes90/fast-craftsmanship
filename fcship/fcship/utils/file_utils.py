@@ -161,12 +161,10 @@ def validate_operation(
         (not (operation in requires_name and not name), "Name required")
     )
     
-    return pipe(
-        checks,
-        result.traverse(lambda check: Ok() if check[0] else Error(typer.BadParameter(check[1]))),
-        result.map(lambda _: None)
-    )
+    return checks.traverse(
+        lambda check: Ok() if check[0] else Error(typer.BadParameter(check[1]))).map(lambda _: None)
+    
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
     """Pure: Find a file's status in the tracker."""
-    return tracker.files.find(lambda x: x[0] == path).map(lambda x: x[1])
+    return tracker.files.filter(lambda x: x[0] == path).map(lambda x: x[1])

@@ -94,6 +94,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6b/a2/656b8bebe495117342a8676ccabf52b3885ce11a856c8dfe1fbbdc250d2d/expression-5.6.0-py3-none-any.whl", hash = "sha256:f5c62e38186c9287e088dee9cf3939b0bbde21cb4c59571872154a53d33dd7c0", size = 69673 },
 ]
 
+[package.optional-dependencies]
+pydantic = [
+    { name = "pydantic" },
+]
+
 [[package]]
 name = "fast-craftsmanship"
 version = "0.1.0"
@@ -102,7 +107,7 @@ dependencies = [
     { name = "alembic" },
     { name = "beautifulsoup4" },
     { name = "black" },
-    { name = "expression" },
+    { name = "expression", extra = ["pydantic"] },
     { name = "flake8" },
     { name = "markdown" },
     { name = "mypy" },
@@ -129,7 +134,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.13.3" },
     { name = "black", specifier = ">=25.1.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.1.1" },
-    { name = "expression", specifier = ">=5.6.0" },
+    { name = "expression", extras = ["pydantic"], specifier = ">=5.6.0" },
     { name = "flake8", specifier = ">=7.1.2" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "markdown", specifier = ">=3.7" },
