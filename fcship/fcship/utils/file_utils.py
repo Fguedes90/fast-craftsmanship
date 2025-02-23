@@ -44,43 +44,27 @@ def write_content_operation(path: Path, content: str) -> Callable[[], None]:
         path.write_text(content)
     return operation
 
-def handle_io_error(e: Exception, path: str) -> FileError:
-    """Pure: Convert IO exception to FileError."""
-    return FileError(str(e), path)
+from expression.core import try_
 
-def execute_io_operation(operation: Callable[[], None], path: str) -> Result[None, FileError]:
-    return Ok(operation).match(
-        ok=lambda _: Ok(None),
-        error=lambda e: Error(handle_io_error(e, path))
-    )
-
-def handle_io_operation(operation: Callable[[], None], path: str) -> Result[None, FileError]:
-    return Ok(operation).match(
-        ok=lambda _: Ok(None),
-        error=lambda e: Error(FileError(str(e), path))
-    )
-
+@try_[FileError]()
 def ensure_directory(path: Path) -> Result[None, FileError]:
-    """Pure: Ensure directory exists."""
-    return handle_io_operation(lambda: path.parent.mkdir(parents=True, exist_ok=True), str(path.parent))
+    path.parent.mkdir(parents=True, exist_ok=True)
 
+@try_[FileError]()
 def write_file(path: Path, content: str) -> Result[None, FileError]:
-    """Pure: Write content to file."""
-    return handle_io_operation(lambda: path.write_text(content), str(path))
+    path.write_text(content)
 
 
 def create_single_file(
     tracker: FileCreationTracker,
     path_content: tuple[Path, str]
 ) -> Result[FileCreationTracker, FileError]:
-    """Pure: Create file and return new tracker state."""
-    from expression.core import Result, pipeline
     path, content = path_content
     
-    return Result.pipeline(
+    return pipe(
         ensure_directory(path),
-        lambda _: write_file(path, content),
-        lambda _: tracker.add_file(str(path))
+        result.bind(lambda _: write_file(path, content)),
+        result.bind(lambda _: tracker.add_file(str(path)))
     )
 
 def build_file_path(base: Path, file_info: Tuple[str, str]) -> Tuple[Path, str]:
@@ -111,16 +95,12 @@ def process_all_files(
     files: Block[tuple[str, str]],
     tracker: FileCreationTracker
 ) -> Result[FileCreationTracker, FileError]:
-    """Pure: Process file creation as a fold over file list."""
-    from expression.collections import Seq
-    from expression.core import Result, pipe
+    build_path = lambda item: build_file_path(base, item)
     
     return pipe(
-        files,
-        Seq.fold(lambda acc, item: 
-            acc.bind(lambda t: create_single_file(t, build_file_path(base, item))),
-            Result.ok(tracker)
-        )
+        files.map(build_path),
+        result.traverse(lambda pc: create_single_file(FileCreationTracker(), pc)),
+        result.map(lambda results: reduce(lambda acc, t: FileCreationTracker(acc.files + t.files), results, tracker))
     )
 
 def create_files(
@@ -176,11 +156,15 @@ def validate_operation(
     operation: str, 
     name: Optional[str]
 ) -> Result[None, typer.BadParameter]:
-    """Pure: Validate operation and name combination."""
-    from expression.core import Result
-    return Result.do(
-        validate_operation_existence(valid_ops, operation)
-        and validate_name_requirement(operation, requires_name, name)
+    checks = Block.of(
+        (operation in valid_ops, f"Invalid operation: {operation}"),
+        (not (operation in requires_name and not name), "Name required")
+    )
+    
+    return pipe(
+        checks,
+        result.traverse(lambda check: Ok() if check[0] else Error(typer.BadParameter(check[1]))),
+        result.map(lambda _: None)
     )
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
