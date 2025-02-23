@@ -7,8 +7,7 @@ from expression.collections import Map, Block
 import typer
 from fcship.utils.file_utils import (
     FileError,
-    FileCreationTracker,
-    init_file_creation_tracker,
+    FileOperation,
     ensure_directory,
     write_file,
     create_single_file,
@@ -78,18 +77,15 @@ def test_write_file(tmp_path):
         assert isinstance(result.error, FileError)
 
 def test_create_single_file(tmp_path):
-    """Test single file creation with tracker."""
-    result = init_file_creation_tracker()
-    assert result.is_ok()
-    tracker = result.ok
-    
+    """Test single file creation."""
     test_file = tmp_path / "test.txt"
     content = "test content"
     
-    # Test successful creation
-    result = create_single_file(tracker, (test_file, content))
+    result = create_single_file(tmp_path, ("test.txt", content))
     assert result.is_ok()
-    assert str(test_file) in result.ok.files
+    op = result.ok
+    assert op.path == test_file
+    assert op.content == content
     assert test_file.read_text() == content
 
 def test_create_files(tmp_path):
