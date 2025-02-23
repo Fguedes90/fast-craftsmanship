@@ -29,6 +29,25 @@ def run_command(cmd: List[str], tool: str) -> Tuple[bool, str]:
     except FileNotFoundError:
         return False, f"{tool} is not installed. Run: pip install {tool}"
 
+def run_verification_check(item: Tuple[str, Callable[[], None]], update_fn: Callable[[str], None]):
+    from expression import Ok, Error
+    name, check_fn = item
+    update_fn(f"[bold green]Running {name.lower()}...")
+    try:
+        check_fn()
+        return Ok(None)
+    except VerificationError as e:
+        return Error((name, e.output))
+    except Exception as e:
+        return Error((name, str(e)))
+
+def process_all_checks(checks: List[Tuple[str, Callable[[], None]]], update_fn: Callable[[str], None]):
+    from expression import pipe
+    return pipe(
+        checks,
+        lambda cs: list(map(lambda item: run_verification_check(item, update_fn), cs))
+    )
+
 @handle_command_errors
 def run_type_checking() -> None:
     """Run mypy type checking."""
@@ -64,6 +83,13 @@ def run_format_check() -> None:
         if not success:
             raise VerificationError("Format checking", output)
     success_message("Format checking passed")
+
+def finish_verification(failed: List[Tuple[str, str]]) -> None:
+    show_verification_summary(failed)
+    if failed:
+        raise typer.Exit(1)
+    else:
+        console.print("\n[bold green]✨ All verifications passed successfully![/bold green]")
 
 VERIFICATION_TYPES = {
     "type": (run_type_checking, "Run type checking only"),
@@ -117,31 +143,11 @@ def verify(
             ("Format checking", run_format_check)
         ]
         
-        from expression import pipe, Ok, Error
         with console.status("[bold green]Running verifications...") as status:
-            def run_check(item: Tuple[str, Callable[[], None]]):
-                name, check_fn = item
-                status.update(f"[bold green]Running {name.lower()}...")
-                try:
-                    check_fn()
-                    return Ok(None)
-                except VerificationError as e:
-                    return Error((name, e.output))
-                except Exception as e:
-                    return Error((name, str(e)))
-            
-            results = pipe(
-                checks,
-                lambda cs: list(map(run_check, cs))
-            )
+            results = process_all_checks(checks, status.update)
             failed = [r.error for r in results if not r.is_ok()]
         
-        show_verification_summary(failed)
-        
-        if failed:
-            raise typer.Exit(1)
-        else:
-            console.print("\n[bold green]✨ All verifications passed successfully![/bold green]")
+        finish_verification(failed)
     else:
         # Run single check
         check_fn, _ = VERIFICATION_TYPES[check_type]
