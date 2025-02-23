@@ -117,21 +117,23 @@ def verify(
             ("Format checking", run_format_check)
         ]
         
-        failed_checks: List[Tuple[str, str]] = []
-        
         with console.status("[bold green]Running verifications...") as status:
-            for name, check_fn in checks:
+            def exec_check(item: Tuple[str, Callable[[], None]]) -> Tuple[str, str] | None:
+                name, check_fn = item
                 status.update(f"[bold green]Running {name.lower()}...")
                 try:
                     check_fn()
+                    return None
                 except VerificationError as e:
-                    failed_checks.append((name, e.output))
+                    return (name, e.output)
                 except Exception as e:
-                    failed_checks.append((name, str(e)))
+                    return (name, str(e))
+            
+            results = list(filter(lambda x: x is not None, map(exec_check, checks)))
         
-        show_verification_summary(failed_checks)
+        show_verification_summary(results)
         
-        if failed_checks:
+        if results:
             raise typer.Exit(1)
         else:
             console.print("\n[bold green]✨ All verifications passed successfully![/bold green]")
