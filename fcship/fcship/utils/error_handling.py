@@ -31,17 +31,19 @@ def handle_command_errors(fn: Fn) -> Fn:
         return r.match(lambda v: v, _on_error)
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            return pipe(
-                await effect.from_async(fn)(*args, **kwargs).to_awaitable(),
-                handle_result
-            )
+            try:
+                result = await fn(*args, **kwargs)
+                return handle_result(Ok(result))
+            except Exception as e:
+                return handle_result(Error(e))
         return wrapper  # type: ignore
     else:
         def wrapper(*args: Any, **kwargs: Any) -> T:
-            return pipe(
-                effect.try_(fn)(*args, **kwargs),
-                handle_result
-            )
+            try:
+                result = fn(*args, **kwargs)
+                return handle_result(Ok(result))
+            except Exception as e:
+                return handle_result(Error(e))
         return wrapper
 
 def validate_operation(
@@ -49,8 +51,8 @@ def validate_operation(
     valid_operations: list[str],
     name: str | None = None,
     requires_name: list[str] | None = None
-) -> Result[str, Exception]:
-    return pipe(
+) -> str:
+    res = pipe(
         Ok(operation),
         lambda res: res.bind(lambda op: Ok(op) if op in valid_operations else Error(
             typer.BadParameter(f"Invalid operation: {op}. Valid operations: {', '.join(valid_operations)}")
@@ -59,3 +61,7 @@ def validate_operation(
             typer.BadParameter(f"Operation '{op}' requires a name parameter")
         ))
     )
+    if res.is_ok():
+        return res.ok
+    else:
+        raise res.error
