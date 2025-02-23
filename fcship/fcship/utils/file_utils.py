@@ -106,4 +106,4 @@ def validate_operation(
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
     """Pure: Find a file's status in the tracker."""
-    return tracker.files.filter(lambda x: x[0] == path).map(lambda x: x[1])
+    return tracker.files.filter(lambda fs: fs.path == path).map(lambda fs: fs.status)
