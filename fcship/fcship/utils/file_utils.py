@@ -42,15 +42,16 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return try_.try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
-           .map(lambda _: None)\
-           .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
+    return Try(
+        ok = lambda: path.parent.mkdir(parents=True, exist_ok=True).map(lambda _: None),
+        error = lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent))
+    )
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return try_.try_(lambda: path.write_text(content))\
-           .map(lambda _: None)\
-           .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
+    return Try(
+        ok= lambda: path.write_text(content).map(lambda _: None),
+        error= lambda e: FileError(f"Failed to write file: {path}", str(path)))
 
 
 def create_single_file(tracker, path_content: FileContent) -> FileResult:
@@ -58,7 +59,7 @@ def create_single_file(tracker, path_content: FileContent) -> FileResult:
     if not isinstance(rel_path, Path):
         rel_path = Path(rel_path)
     if isinstance(tracker, Path):
-        file_path = tracker / rel_path if not rel_path.is_absolute() else rel_path
+        file_path = rel_path if rel_path.is_absolute() else tracker / rel_path
         return pipe(
             ensure_directory(file_path),
             result.bind(lambda _: write_file(file_path, content)),
