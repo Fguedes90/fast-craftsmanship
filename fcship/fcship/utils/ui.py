@@ -165,12 +165,15 @@ def add_row_to_table(table: Table, row: TableRow) -> TableResult:
         return Error(DisplayError.Rendering("Failed to add row to table", e))
 
 def create_panel(title: str, content: str, style: str) -> PanelResult:
-    """Creates a panel with the given parameters."""
-    return pipe(
-        validate_panel_inputs(title, content, style),
-        lambda inputs: Try.create(lambda: Panel(content, title=title, border_style=style))
-            .map_error(lambda e: DisplayError.Rendering("Failed to create panel", e))
-    )
+    """Cria um painel com os parâmetros fornecidos."""
+    return pipeline(
+        # Inicia a pipeline com valor dummy
+        lambda _: Ok(None),
+        # Valida os inputs
+        lambda _: validate_panel_inputs(title, content, style),
+        # Tenta criar o painel de forma segura, capturando a exceção
+        lambda _: _try_create_panel(content, title, style)
+    )(None)
 
 def create_summary_table[T](results: Block[tuple[str, Result[str, T]]]) -> TableResult:
     """Creates a summary table of verification results."""
