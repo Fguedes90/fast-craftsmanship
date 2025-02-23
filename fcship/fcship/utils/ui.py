@@ -1,43 +1,4 @@
-"""UI utilities for CLI output."""
-
-import contextlib
-from typing import TypeVar, TypeGuard, Any, TypeAlias
-from collections.abc import Iterable, Callable, Awaitable
-import typer
-from expression import (
-    Result, 
-    Ok, 
-    Error, 
-    pipe,
-)
-from expression.collections import seq, Block
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.rule import Rule
-from .errors import DisplayError
-import asyncio
-from rich.progress import (
-    Progress, 
-    SpinnerColumn, 
-    TextColumn, 
-    BarColumn, 
-    TaskProgressColumn, 
-    TimeElapsedColumn
-)
-from contextlib import contextmanager
-
-T = TypeVar('T')
-E = TypeVar('E')
-U = TypeVar('U')
-
-# Custom type aliases
-DisplayResult: TypeAlias = Result[None, DisplayError]
-TableResult: TypeAlias = Result[Table, DisplayError]
-PanelResult: TypeAlias = Result[Panel, DisplayError]
-ValidationResult: TypeAlias = Result[str, DisplayError]
-TableRow: TypeAlias = tuple[str, str]
-TableRowResult: TypeAlias = Result[TableRow, DisplayError]
+# All UI content has been moved to the fcship/tui module.
 TableData: TypeAlias = list[TableRow]
 StyleValidator: TypeAlias = Callable[[str], ValidationResult]
 DisplayFunction = Callable[[T], DisplayResult]
