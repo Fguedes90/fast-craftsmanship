@@ -92,18 +92,14 @@ def bind_name_validation(requires_name: Block[str], name: str | None, operation:
     return lambda _: validate_name_requirement(operation, requires_name, name)
 
 def validate_operation(
-    valid_ops: Block[str], 
-    requires_name: Block[str], 
-    operation: str, 
+    valid_ops: Block[str],
+    requires_name: Block[str],
+    operation: str,
     name: str | None
 ) -> Result[None, typer.BadParameter]:
-    checks = Block.of(
-        (operation in valid_ops, f"Invalid operation: {operation}"),
-        (not (operation in requires_name and not name), "Name required")
+    return validate_operation_existence(valid_ops, operation).bind(
+        lambda _: validate_name_requirement(operation, requires_name, name)
     )
-    
-    return checks.traverse(
-        lambda check: Ok() if check[0] else Error(typer.BadParameter(check[1]))).map(lambda _: None)
     
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
