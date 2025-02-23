@@ -42,7 +42,7 @@ assert str(result.error) == "expected message"
 3. Test error propagation in pipelines
 4. Document test cases clearly
 5. Use property-based testing for invariants
-
+6. Test success, failure and edge cases
 # Practical Examples
 
 ## Basic Result Testing
@@ -119,3 +119,47 @@ def test_error_propagation(mocker):
     assert result.is_error()
     assert "database error" in result.error.lower()
 ``` 
+## Testing with effect.result and Mocks
+When testing functions decorated with `@effect.result`, there are some special considerations:
+
+1. Test functions must also be decorated with `@effect.result`:
+```python
+@effect.result[Panel, DisplayError]()
+def test_create_panel():
+    result = yield from create_panel("Title", "Content", "blue")
+    assert result.is_ok()
+    assert isinstance(result.ok, Panel)
+```
+
+2. When mocking functions that use `effect.result`, the mocks must also be decorated and use `yield`:
+```python
+@effect.result[Panel, DisplayError]()
+def test_with_mock(monkeypatch):
+    @effect.result[Panel, DisplayError]()
+    def mock_function(*args, **kwargs):
+        yield Ok(Panel("test"))  # Use yield instead of return
+    
+    monkeypatch.setattr("module.function", mock_function)
+    result = yield from tested_function()
+    assert result.is_ok()
+```
+
+3. Testing error cases with mocks:
+```python
+@effect.result[Panel, DisplayError]()
+def test_error_with_mock(monkeypatch):
+    @effect.result[Panel, DisplayError]()
+    def mock_function(*args, **kwargs):
+        yield Error(DisplayError.Rendering("Mock error", None))
+    
+    monkeypatch.setattr("module.function", mock_function)
+    result = yield from tested_function()
+    assert result.is_error()
+    assert "Mock error" in str(result.error)
+```
+
+Key points:
+- Always use `@effect.result` on test functions
+- Mock functions must also use `@effect.result`
+- Use `yield` instead of `return` in mock functions
+- Remember to `yield from` when calling effect functions 

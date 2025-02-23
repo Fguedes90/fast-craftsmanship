@@ -207,8 +207,9 @@ def test_create_panel_invalid_input():
 @effect.result[Panel, DisplayError]()
 def test_create_nested_panel_inner_panel_error_with_mock(monkeypatch):
     """Test that create_nested_panel handles inner panel creation errors with mock"""
+    @effect.result[Panel, DisplayError]()
     def mock_create_inner_panel(*args, **kwargs):
-        return Error(DisplayError.Rendering("Mock inner panel error", None))
+        yield Error(DisplayError.Rendering("Mock inner panel error", None))
     
     monkeypatch.setattr("fcship.tui.panels._create_inner_panel", mock_create_inner_panel)
     sections = [(VALID_TITLE, VALID_CONTENT)]
