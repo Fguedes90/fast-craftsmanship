@@ -68,28 +68,19 @@ def write_file(path: Path, content: str) -> Result[None, FileError]:
     """Pure: Write content to file."""
     return handle_io_operation(lambda: path.write_text(content), str(path))
 
-def bind_write_operation(path: Path, content: str) -> Callable[[Result[None, FileError]], Result[None, FileError]]:
-    """Pure: Bind write operation to previous result."""
-    def bind_operation(_: None) -> Result[None, FileError]:
-        return write_file(path, content)
-    return bind_operation
-
-def bind_tracker_update(tracker: FileCreationTracker, path: str) -> Callable[[Result[None, FileError]], Result[FileCreationTracker, FileError]]:
-    """Pure: Bind tracker update to previous result."""
-    def bind_operation(_: None) -> Result[FileCreationTracker, FileError]:
-        return tracker.add_file(path)
-    return bind_operation
 
 def create_single_file(
     tracker: FileCreationTracker,
     path_content: tuple[Path, str]
 ) -> Result[FileCreationTracker, FileError]:
     """Pure: Create file and return new tracker state."""
+    from expression.core import Result, pipeline
     path, content = path_content
-    return (
-        ensure_directory(path)
-        .bind(lambda _: write_file(path, content))
-        .bind(lambda _: tracker.add_file(str(path)))
+    
+    return Result.pipeline(
+        ensure_directory(path),
+        lambda _: write_file(path, content),
+        lambda _: tracker.add_file(str(path))
     )
 
 def build_file_path(base: Path, file_info: Tuple[str, str]) -> Tuple[Path, str]:
@@ -121,9 +112,14 @@ def process_all_files(
     tracker: FileCreationTracker
 ) -> Result[FileCreationTracker, FileError]:
     """Pure: Process file creation as a fold over file list."""
-    return files.fold(
-        lambda acc, item: acc >> (lambda t: create_single_file(t, build_file_path(base, item))),
-        Ok(tracker)
+    from expression.collections import Seq
+    from expression.core import Result, pipe
+    
+    return pipe(
+        files,
+        Seq.fold(lambda acc, item: 
+            acc.bind(lambda t: create_single_file(t, build_file_path(base, item))),
+            Result.ok(tracker)
     )
 
 def create_files(
@@ -180,9 +176,10 @@ def validate_operation(
     name: Optional[str]
 ) -> Result[None, typer.BadParameter]:
     """Pure: Validate operation and name combination."""
-    return (
+    from expression.core import Result
+    return Result.do(
         validate_operation_existence(valid_ops, operation)
-        .bind(lambda _: validate_name_requirement(operation, requires_name, name))
+        and validate_name_requirement(operation, requires_name, name)
     )
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
