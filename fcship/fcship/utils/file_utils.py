@@ -11,48 +11,26 @@ from functools import reduce
 A = TypeVar('A')
 E = TypeVar('E')
 
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
 class FileError:
-    """Pure: Represents a file operation error."""
-    def __init__(self, message: str, path: str):
-        self._message = message
-        self._path = path
-    
-    @property
-    def message(self) -> str:
-        return self._message
-    
-    @property
-    def path(self) -> str:
-        return self._path
+    """Immutable error representation for file operations."""
+    message: str
+    path: str
 
-class FileCreationTracker(BaseModel):
-    """Track file creation progress."""
-    files: Annotated[Map[str, str], Field(default_factory=Map.empty)]
-
-    model_config = {
-        "frozen": True,
-        "arbitrary_types_allowed": True
-    }
+@dataclass(frozen=True)
+class FileCreationTracker:
+    """Immutable tracker of file creation progress."""
+    files: Block[tuple[str, str]] = Block.empty()
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return pipe(
-            self.model_copy(update={"files": self.files.add(path, status)}),
-            Ok,
-            match(
-                Ok, lambda tracker: Ok(tracker),
-                Error, lambda e: Error(FileError(str(e), path))
-            )
-        )
+        """Pure: Create new tracker with added file entry."""
+        return Ok(FileCreationTracker(self.files.cons((path, status))))
 
 def init_file_creation_tracker() -> Result[FileCreationTracker, FileError]:
-    return pipe(
-        FileCreationTracker(),
-        Ok,
-        match(
-            Ok, lambda tracker: Ok(tracker),
-            Error, lambda e: Error(FileError(str(e), ""))
-        )
-    )
+    """Pure: Initialize empty file creation tracker."""
+    return Ok(FileCreationTracker())
 
 def create_directory_operation(path: Path) -> Callable[[], None]:
     """Pure: Create a directory creation operation."""
@@ -114,18 +92,12 @@ def create_single_file(
     tracker: FileCreationTracker,
     path_content: tuple[Path, str]
 ) -> Result[FileCreationTracker, FileError]:
-    """Pure: Create a single file and update tracker."""
+    """Pure: Create file and return new tracker state."""
     path, content = path_content
-    return pipe(
-        ensure_directory(path),
-        match(
-            Ok, lambda _: write_file(path, content),
-            Error, lambda e: Error(e)
-        ),
-        match(
-            Ok, lambda _: tracker.add_file(str(path)),
-            Error, lambda e: Error(e)
-        )
+    return (
+        ensure_directory(path)
+        .bind(lambda _: write_file(path, content))
+        .bind(lambda _: tracker.add_file(str(path)))
     )
 
 def build_file_path(base: Path, file_info: Tuple[str, str]) -> Tuple[Path, str]:
@@ -153,13 +125,14 @@ def process_files_item(
 
 def process_all_files(
     base: Path,
-    files: Map[str, str],
+    files: Block[tuple[str, str]],
     tracker: FileCreationTracker
 ) -> Result[FileCreationTracker, FileError]:
-    """Pure: Process all files in the map."""
-    def process_item(acc: Result[FileCreationTracker, FileError], item: Tuple[str, str]) -> Result[FileCreationTracker, FileError]:
-        return acc.bind(lambda t: create_single_file(t, build_file_path(base, item)))
-    return reduce(process_item, files.items(), Ok(tracker))
+    """Pure: Process file creation as a fold over file list."""
+    return files.fold(
+        lambda acc, item: acc.bind(lambda t: create_single_file(t, build_file_path(base, item))),
+        Ok(tracker)
+    )
 
 def create_files(
     files: Map[str, str],
