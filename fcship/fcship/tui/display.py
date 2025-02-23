@@ -2,7 +2,7 @@ import asyncio
 import typer
 from expression import Ok, Error, Result
 from fcship.tui.helpers import validate_input
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 from rich.console import Console
 from rich.rule import Rule
 

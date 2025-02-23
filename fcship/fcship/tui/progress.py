@@ -2,7 +2,7 @@ import asyncio
 from typing import Coroutine
 from expression import Ok, Error, Result, pipe, Try
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 from fcship.tui.helpers import validate_progress_inputs
 
 async def display_progress(items: list, process: callable, description: str) -> Result[None, DisplayError]:
@@ -36,8 +36,7 @@ async def safe_display_with_progress(progress: Progress, items: list, process: c
 
 async def run_with_timeout(computation: Coroutine, timeout: float = 1.0) -> Result:
     try:
-        result = await asyncio.wait_for(computation, timeout=timeout)
-        return result
+        return await asyncio.wait_for(computation, timeout=timeout)
     except asyncio.TimeoutError:
         return Error(DisplayError.Timeout(f"Operation timed out after {timeout} seconds", Exception("Timeout")))
     except Exception as e:

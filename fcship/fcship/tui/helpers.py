@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from expression import Ok, Error, Result, pipe
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 
 def validate_input(value: str | None, name: str) -> Result[str, DisplayError]:
     return Ok(value) if value else Error(DisplayError.Validation(f"{name} cannot be empty"))
@@ -34,7 +34,7 @@ def validate_table_data(headers: list[str], rows: list[tuple[str, str]]) -> Resu
         return Error(DisplayError.Validation("Headers list cannot be empty"))
     if not all(isinstance(h, str) for h in headers):
         return Error(DisplayError.Validation("Headers must be strings"))
-    if not all(len(row) == len(headers) for row in rows):
+    if any(len(row) != len(headers) for row in rows):
         return Error(DisplayError.Validation("All rows must have same length as headers"))
     if not all(all(isinstance(cell, str) for cell in row) for row in rows):
         return Error(DisplayError.Validation("All cells must be strings"))
@@ -45,8 +45,8 @@ def validate_progress_inputs(items: Iterable, process_fn: callable, description:
         items_list = list(items)
         return pipe(
             items_list,
-            lambda i: Error(DisplayError.Validation("Items list cannot be empty")) if not i else Ok(i),
-            lambda _: Error(DisplayError.Validation("Process function must be callable")) if not callable(process_fn) else Ok(None),
+            lambda i: Ok(i) if i else Error(DisplayError.Validation("Items list cannot be empty")),
+            lambda _: Ok(None) if callable(process_fn) else Error(DisplayError.Validation("Process function must be callable")),
             lambda _: validate_input(description, "Description").map(lambda _: None)
         )
     except Exception as e:

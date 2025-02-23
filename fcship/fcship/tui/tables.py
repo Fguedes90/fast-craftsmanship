@@ -1,7 +1,7 @@
 from expression import Ok, Error, Result, pipe, seq
 from rich.table import Table
 from fcship.tui.helpers import validate_table_row, validate_table_data, validate_input
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 
 def create_table_row(name_result: tuple[str, Result[str, any]]) -> Result[tuple[str, str], DisplayError]:
     name, result = name_result
@@ -47,7 +47,7 @@ def create_multi_column_table(columns: list[tuple[str, str | None]], rows: list[
             return Error(DisplayError.Validation("Headers list cannot be empty"))
         if not all(isinstance(col[0], str) for col in columns):
             return Error(DisplayError.Validation("Headers must be strings"))
-        if not all(len(row) == len(columns) for row in rows):
+        if any(len(row) != len(columns) for row in rows):
             return Error(DisplayError.Rendering("Row length must match number of columns"))
         table = Table()
         for header, style in columns:

@@ -1,6 +1,6 @@
 import typer
 from expression import Ok, Error, Result
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 
 async def prompt_for_input(prompt: str, validator: callable) -> Result[str, DisplayError]:
     try:

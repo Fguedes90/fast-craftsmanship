@@ -6,7 +6,7 @@ from expression.collections import Block, seq
 from rich.console import Console
 from rich.panel import Panel
 from contextlib import contextmanager
-from .errors import DisplayError
+from ..tui.errors import DisplayError
 
 T = TypeVar('T')
 U = TypeVar('U')

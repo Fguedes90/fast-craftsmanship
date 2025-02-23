@@ -3,7 +3,7 @@ import contextlib
 import asyncio
 from expression import Ok, Error, Result, pipe
 from rich.console import Console
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 
 # Use the console instance from the tui display module.
 from fcship.tui.display import console
@@ -63,10 +63,8 @@ async def with_retry(operation: Callable[[], Result], max_attempts: int = 3, del
         if result.is_ok():
             return result
         if attempt < max_attempts - 1:
-            try:
+            with contextlib.suppress(Exception):
                 await asyncio.sleep(delay)
-            except Exception:
-                pass
     return result
 
 def aggregate_errors(errors: list[DisplayError]) -> DisplayError:
@@ -74,8 +72,7 @@ def aggregate_errors(errors: list[DisplayError]) -> DisplayError:
     Combina múltiplos erros em um único erro de validação.
     """
     error_messages = []
-    for error in errors:
-        error_messages.append(str(error))
+    error_messages.extend(str(error) for error in errors)
     return DisplayError.Validation("\n".join(error_messages))
 
 def recover_ui(operation: Callable[[], Result], recovery_strategies: dict[str, Callable[[], Result]], max_attempts: int = 3) -> Result:

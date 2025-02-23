@@ -1,7 +1,7 @@
 from expression import Ok, Error, Result, pipe
 from rich.panel import Panel
 from fcship.tui.helpers import validate_panel_inputs
-from fcship.fcship.utils.errors import DisplayError
+from fcship.tui.errors import DisplayError
 
 def _try_create_panel(content: str, title: str, style: str) -> Result[Panel, DisplayError]:
     try:
