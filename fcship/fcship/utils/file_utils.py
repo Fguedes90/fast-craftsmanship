@@ -28,10 +28,10 @@ class FileStatus(NamedTuple):
 
 @dataclass(frozen=True)
 class FileCreationTracker:
-    files: Block[FileStatus] = field(default_factory=Block.empty)
+    files: Map[str, str] = field(default_factory=Map.empty)
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
+        return Ok(FileCreationTracker(self.files.set(path, status)))
 
 @dataclass(frozen=True)
 class FileOperation:
@@ -41,15 +41,19 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return Ok(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
-        .map(lambda _: None)\
-        .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return Ok(None)
+    except Exception as e:
+        return Error(FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return Ok(lambda: path.write_text(content))\
-           .map(lambda _: None)\
-           .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
+    try:
+        path.write_text(content)
+        return Ok(None)
+    except Exception as e:
+        return Error(FileError(f"Failed to write file: {path}", str(path)))
 
 
 def create_single_file(tracker, path_content: FileContent) -> FileResult:
@@ -77,7 +81,7 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 
 
-def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult:
+def process_all_files(base: Path, files: Map[str, str], tracker: FileCreationTracker) -> FileResult:
     return files.fold(
         lambda acc, item: pipe(
             acc,
