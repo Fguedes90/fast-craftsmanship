@@ -120,6 +120,7 @@ def process_all_files(
         Seq.fold(lambda acc, item: 
             acc.bind(lambda t: create_single_file(t, build_file_path(base, item))),
             Result.ok(tracker)
+        )
     )
 
 def create_files(
