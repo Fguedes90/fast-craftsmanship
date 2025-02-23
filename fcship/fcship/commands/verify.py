@@ -1,7 +1,7 @@
 """Verification commands."""
 import typer
 import subprocess
-from typing import Tuple, List, Callable
+from typing import Tuple, List, Callable, Generator
 from rich.table import Table
 from rich.panel import Panel
 from ..utils import (
