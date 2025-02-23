@@ -117,23 +117,28 @@ def verify(
             ("Format checking", run_format_check)
         ]
         
+        from expression import pipe, Ok, Error
         with console.status("[bold green]Running verifications...") as status:
-            def exec_check(item: Tuple[str, Callable[[], None]]) -> Tuple[str, str] | None:
+            def run_check(item: Tuple[str, Callable[[], None]]):
                 name, check_fn = item
                 status.update(f"[bold green]Running {name.lower()}...")
                 try:
                     check_fn()
-                    return None
+                    return Ok(None)
                 except VerificationError as e:
-                    return (name, e.output)
+                    return Error((name, e.output))
                 except Exception as e:
-                    return (name, str(e))
+                    return Error((name, str(e)))
             
-            results = list(filter(lambda x: x is not None, map(exec_check, checks)))
+            results = pipe(
+                checks,
+                lambda cs: list(map(run_check, cs))
+            )
+            failed = [r.error for r in results if not r.is_ok()]
         
-        show_verification_summary(results)
+        show_verification_summary(failed)
         
-        if results:
+        if failed:
             raise typer.Exit(1)
         else:
             console.print("\n[bold green]✨ All verifications passed successfully![/bold green]")
