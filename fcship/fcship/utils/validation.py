@@ -16,16 +16,20 @@ def validate_operation(
     requires_name: list[str] | None = None
 ) -> Result[str, Exception]:
     """Validate command operation and arguments using Expression's Try effect."""
-    if operation not in valid_operations:
-        valid_ops = ", ".join(valid_operations)
-        return Error(typer.BadParameter(
-            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
-        ))
-    if requires_name and operation in requires_name and not name:
-        return Error(typer.BadParameter(
-            f"Operation '{operation}' requires a name parameter"
-        ))
-    return Ok(operation)
+    valid_ops = ", ".join(valid_operations)
+    return pipe(
+        Ok(operation),
+        lambda res: res.bind(lambda op: 
+            Ok(op) if op in valid_operations else Error(
+                typer.BadParameter(f"Invalid operation: {op}. Valid operations: {valid_ops}")
+            )
+        ),
+        lambda res: res.bind(lambda op:
+            Ok(op) if not (requires_name and op in requires_name and not name) else Error(
+                typer.BadParameter(f"Operation '{op}' requires a name parameter")
+            )
+        )
+    )
 
 def validate(validator: Callable[[T], bool], error_msg: str) -> Callable[[T], Result[T, Exception]]:
     """Create a validation function that returns a Result."""
@@ -33,12 +37,8 @@ def validate(validator: Callable[[T], bool], error_msg: str) -> Callable[[T], Re
 
 def compose_validations(*validators: Callable[[T], Result[T, Exception]]) -> Callable[[T], Result[T, Exception]]:
     """Compose multiple validation functions into a single validation."""
-    def composed(value: T) -> Result[T, Exception]:
-        result = Ok(value)
-        for v in validators:
-            result = result.bind(v)
-        return result
-    return composed
+    from functools import reduce
+    return lambda value: reduce(lambda acc, v: acc.bind(v), validators, Ok(value))
 
 
 def validate_optional(value: Option[T], error_msg: str) -> Result[T, Exception]:
