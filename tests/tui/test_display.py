@@ -1,12 +1,13 @@
 from typing import List, Tuple
 import pytest
-from expression import Ok, Error, Result
+from expression import Ok, Error, Result, effect
 from rich.console import Console
 from hypothesis import given, strategies as st
 from fcship.tui.display import (
     DisplayMessage,
     BatchMessages,
     DisplayStyle,
+    DisplayError,
     validate_message,
     validate_message_pair,
     validate_batch_messages,
@@ -25,7 +26,6 @@ from fcship.tui.display import (
 )
 from unittest.mock import patch
 from unittest.mock import Mock
-from hypothesis import effect
 
 # Test data
 VALID_MESSAGE = "Test message"
