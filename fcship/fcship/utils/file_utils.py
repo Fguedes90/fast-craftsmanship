@@ -34,6 +34,11 @@ class FileCreationTracker:
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
+@dataclass(frozen=True)
+class FileOperation:
+    path: Path
+    content: str
+
 
 
 def ensure_directory(path: Path) -> FileResult:
@@ -46,14 +51,23 @@ def write_file(path: Path, content: str) -> FileResult:
     return Try(path.write_text(content), FileError(f"Failed to write file: {path}", str(path)))
 
 
-def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> FileResult:
-    path, content = path_content
-
-    return pipe(
-        ensure_directory(path),
-        result.bind(lambda _: write_file(path, content)),
-        result.bind(lambda _: tracker.add_file(str(path)))
-    )
+def create_single_file(tracker, path_content: FileContent) -> FileResult:
+    rel_path, content = path_content
+    if isinstance(tracker, Path):
+        file_path = tracker / rel_path if not rel_path.is_absolute() else rel_path
+        return pipe(
+            ensure_directory(file_path),
+            result.bind(lambda _: write_file(file_path, content)),
+            result.bind(lambda _: Ok(FileOperation(file_path, content)))
+        )
+    elif isinstance(tracker, FileCreationTracker):
+        return pipe(
+            ensure_directory(rel_path),
+            result.bind(lambda _: write_file(rel_path, content)),
+            result.bind(lambda _: tracker.add_file(str(rel_path)))
+        )
+    else:
+        return Error(FileError("Invalid tracker type", ""))
 
 def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
     return (base / file_info[0], file_info[1])
