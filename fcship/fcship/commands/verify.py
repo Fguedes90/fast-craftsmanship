@@ -19,67 +19,63 @@ class VerificationError(Exception):
         self.output = output
         super().__init__(f"{tool} check failed")
 
+from expression import effect, Ok
+@effect.result[Tuple[bool, str], Exception]()
 def run_command(cmd: List[str], tool: str) -> Tuple[bool, str]:
     """Run a command and return success status and output."""
-    try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, e.stderr
-    except FileNotFoundError:
-        return False, f"{tool} is not installed. Run: pip install {tool}"
+    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    return (True, result.stdout)
 
-def run_verification_check(item: Tuple[str, Callable[[], None]], update_fn: Callable[[str], None]):
-    from expression import Ok, Error
+from expression import effect
+@effect.result[None, Exception]()
+def run_verification_check(item: Tuple[str, Callable[[], None]], update_fn: Callable[[str], None]) -> None:
     name, check_fn = item
     update_fn(f"[bold green]Running {name.lower()}...")
-    try:
-        check_fn()
-        return Ok(None)
-    except VerificationError as e:
-        return Error((name, e.output))
-    except Exception as e:
-        return Error((name, str(e)))
+    yield from check_fn()
 
 def process_all_checks(checks: List[Tuple[str, Callable[[], None]]], update_fn: Callable[[str], None]):
     from expression import pipe
-    return pipe(
-        checks,
-        lambda cs: list(map(lambda item: run_verification_check(item, update_fn), cs))
-    )
+    def run_check(item: Tuple[str, Callable[[], None]]):
+        name, _ = item
+        return run_verification_check(item, update_fn).alt(lambda e: (name, getattr(e, "output", str(e))))
+    return pipe(checks, lambda cs: list(map(run_check, cs)))
 
 @handle_command_errors
-def run_type_checking() -> None:
+@effect.result[None, Exception]()
+def run_type_checking() -> Generator[None, None, None]:
     """Run mypy type checking."""
     with console.status("[bold blue]Running type checking..."):
-        success, output = run_command(["mypy", "."], "mypy")
+        success, output = yield from run_command(["mypy", "."], "mypy")
         if not success:
             raise VerificationError("Type checking", output)
     success_message("Type checking passed")
 
 @handle_command_errors
-def run_linting() -> None:
+@effect.result[None, Exception]()
+def run_linting() -> Generator[None, None, None]:
     """Run flake8 linting."""
     with console.status("[bold blue]Running linting..."):
-        success, output = run_command(["flake8"], "flake8")
+        success, output = yield from run_command(["flake8"], "flake8")
         if not success:
             raise VerificationError("Linting", output)
     success_message("Linting passed")
 
 @handle_command_errors
-def run_tests() -> None:
+@effect.result[None, Exception]()
+def run_tests() -> Generator[None, None, None]:
     """Run pytest tests."""
     with console.status("[bold blue]Running tests..."):
-        success, output = run_command(["pytest"], "pytest")
+        success, output = yield from run_command(["pytest"], "pytest")
         if not success:
             raise VerificationError("Tests", output)
     success_message("Tests passed")
 
 @handle_command_errors
-def run_format_check() -> None:
+@effect.result[None, Exception]()
+def run_format_check() -> Generator[None, None, None]:
     """Run black format checking."""
     with console.status("[bold blue]Checking code format..."):
-        success, output = run_command(["black", "--check", "."], "black")
+        success, output = yield from run_command(["black", "--check", "."], "black")
         if not success:
             raise VerificationError("Format checking", output)
     success_message("Format checking passed")
