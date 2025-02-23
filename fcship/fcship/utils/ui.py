@@ -1,10 +1,15 @@
 """UI utilities for CLI output."""
 
 import contextlib
-from typing import TypeVar, Literal, TypeGuard, Any, TypeAlias, Optional, Sequence
+from typing import TypeVar, TypeGuard, Any, TypeAlias
 from collections.abc import Iterable, Callable, Awaitable
 import typer
-from expression import Result, Ok, Error, effect, Try, pipe, pipeline, Option, Some, Nothing
+from expression import (
+    Result, 
+    Ok, 
+    Error, 
+    pipe,
+)
 from expression.collections import seq, Block
 from rich.console import Console
 from rich.panel import Panel
@@ -12,10 +17,15 @@ from rich.table import Table
 from rich.rule import Rule
 from .errors import DisplayError
 import asyncio
-from typing import Coroutine
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from rich.progress import (
+    Progress, 
+    SpinnerColumn, 
+    TextColumn, 
+    BarColumn, 
+    TaskProgressColumn, 
+    TimeElapsedColumn
+)
 from contextlib import contextmanager
-from typing import Generator
 
 T = TypeVar('T')
 E = TypeVar('E')
@@ -111,7 +121,7 @@ def validate_input(value: str | None, name: str) -> ValidationResult:
     """Validates string input is not empty."""
     return Ok(value) if value else Error(DisplayError.Validation(f"{name} cannot be empty"))
 
-async def display_message(message: Optional[str], style: Optional[str] = None) -> Result[None, DisplayError]:
+async def display_message(message: str | None, style: str | None = None) -> Result[None, DisplayError]:
     """Display a message with optional styling."""
     if message is None:
         return Error(DisplayError.Validation("Message cannot be None"))
@@ -169,7 +179,7 @@ def _try_create_panel(content: str, title: str, style: str) -> PanelResult:
 
 def create_panel(title: str, content: str, style: str) -> PanelResult:
     """Cria um painel com os parâmetros fornecidos."""
-    return pipeline(
+    return Result.pipeline(
         # Inicia a pipeline com valor dummy
         lambda _: Ok(None),
         # Valida os inputs
