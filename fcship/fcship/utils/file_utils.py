@@ -8,10 +8,6 @@ from typing import TypeVar
 A = TypeVar("A")
 E = TypeVar("E")
 T = TypeVar("T")
-FileResult = Result[T, FileError]
-
-FileContent = Tuple[Path, str]
-RawFileContent = Tuple[str, str]
 
 from typing import NamedTuple
 from dataclasses import dataclass
@@ -33,6 +29,11 @@ class FileCreationTracker:
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
+
+FileResult = Result[T, FileError]
+
+FileContent = Tuple[Path, str]
+RawFileContent = Tuple[str, str]
 
 
 
