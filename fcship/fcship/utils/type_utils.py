@@ -27,8 +27,14 @@ def ensure_type(
     Raises:
         ValueError: Se a função de validação indicar que o valor é inválido.
     """
-    if validation_fn is not None and not validation_fn(value):
-        raise ValueError(f"Valor inválido para {type_name}")
+    if validation_fn is not None:
+        validation_result = validation_fn(value)
+        if isinstance(validation_result, bool):
+            if not validation_result:
+                raise ValueError(f"Valor inválido para {type_name}")
+        else:
+            if not validation_result.is_ok():
+                raise ValueError(validation_result.error)
     return type_constructor(value)
 
 def map_type(
@@ -47,7 +53,11 @@ def map_type(
         Uma função que, dado um valor do tipo T, retorna um Result[T, Exception].
     """
     def mapper(x: T) -> Result[T, Exception]:
-        return f(str(x)).map(type_constructor)
+        try:
+            value_str = x.value
+        except AttributeError:
+            value_str = str(x)
+        return f(value_str).map(lambda s: type_constructor(s))
     return mapper
 
 def validate_operation(
