@@ -7,3 +7,5 @@ node_modules/
 .aider*
 .env
 **/__pycache__/
+**/*.gz
+**/fschip.egg-info/*.txt

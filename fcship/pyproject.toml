@@ -19,6 +19,7 @@ dependencies = [
     "beautifulsoup4>=4.13.3",
     "markdown>=3.7",
     "pytest-asyncio>=0.25.3",
+    "hypothesis>=6.126.0",
 ]
 
 [project.scripts]

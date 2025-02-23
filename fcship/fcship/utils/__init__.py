@@ -1,4 +1,5 @@
 """Shared utilities for CLI commands."""
+from rich.console import Console
 from .file_utils import ensure_directory, FileCreationTracker, create_files, file_creation_status
 from .validation import validate_operation
 from .error_handling import handle_command_errors
@@ -12,6 +13,9 @@ from .functional import (
     tap_async, 
     lift_option,
 )
+
+# Create console instance for global use
+console = Console()
 
 __all__ = [
     "ensure_directory",
@@ -30,4 +34,5 @@ __all__ = [
     "tap",
     "tap_async",
     "lift_option",
+    "console"
 ]
