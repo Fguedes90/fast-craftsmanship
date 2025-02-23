@@ -1,20 +1,23 @@
 """Verification commands using functional programming principles."""
 import subprocess
-import typer
 from typing import Literal, TypeVar
-from collections.abc import Generator
 from rich.console import Console
 from rich.panel import Panel
-from expression import Result, Ok, Error, pipe, effect, tagged_union
-from expression.collections import seq, Map, Block
+from expression import Result, Ok, Error, pipe, tagged_union
+from expression.collections import Map, Block, seq
 from pydantic import BaseModel, Field, ConfigDict
 
-from ..utils import handle_command_errors
-from ..utils.ui import (
+from fcship.utils.error_handling import handle_command_errors
+from fcship.utils.ui import (
     create_panel, 
     create_summary_table,
-    create_table_row,
-    add_row_to_table
+    display_message,
+    error_message,
+    success_message,
+    display_rule,
+    handle_ui_error,
+    DisplayError,
+    with_ui_context
 )
 
 T = TypeVar('T')
@@ -23,6 +26,7 @@ class CommandOutput(BaseModel):
     """Represents the output of a command execution."""
     stdout: str = Field(description="Standard output")
     stderr: str = Field(description="Standard error")
+    returncode: int = Field(description="Return code of the command")
 
     model_config = ConfigDict(frozen=True)
 
@@ -77,27 +81,22 @@ VERIFICATIONS = Map.of_seq([
     ("format", Block.of_seq(["black", "--check", "."]))
 ])
 
-def format_command(cmd: Block[str]) -> str:
-    """Formats a command Block into a string."""
-    return " ".join(cmd)
-
-def format_verification_output(outcome: VerificationOutcome) -> Panel:
-    """Formats verification outcome as a rich panel."""
+def format_verification_output(outcome: VerificationOutcome) -> Result[None, DisplayError]:
+    """Formats and displays verification outcome."""
     match outcome:
         case VerificationOutcome(tag="success"):
-            return create_panel("[green]Success[/green]", outcome.success or "", "green")
+            return success_message(outcome.success or "")
         case VerificationOutcome(tag="failure"):
-            return create_panel(f"[red]{outcome.failure[0]} Failed[/red]", outcome.failure[1], "red")
+            return error_message(f"{outcome.failure[0]} Failed", outcome.failure[1])
         case VerificationOutcome(tag="validation_error"):
-            return create_panel("[red]Validation Error[/red]", outcome.validation_error or "", "red")
+            return error_message("Validation Error", outcome.validation_error or "")
         case VerificationOutcome(tag="execution_error"):
-            return create_panel(
-                "[red]Execution Error[/red]",
-                f"Command: {outcome.execution_error[0]}\n\n{outcome.execution_error[1]}",
-                "red"
+            return error_message(
+                "Execution Error",
+                f"Command: {outcome.execution_error[0]}\n\n{outcome.execution_error[1]}"
             )
         case _:
-            return create_panel("[red]Unknown Error[/red]", "An unknown error occurred", "red")
+            return error_message("Unknown Error", "An unknown error occurred")
 
 def validate_check_type(check_type: str) -> Result[str, VerificationOutcome]:
     """Validates the check type parameter."""
@@ -124,7 +123,11 @@ def run_command(cmd: Block[str]) -> Result[CommandOutput, VerificationOutcome]:
             capture_output=True,
             text=True
         )
-        output = CommandOutput(stdout=process.stdout, stderr=process.stderr)
+        output = CommandOutput(
+            stdout=process.stdout, 
+            stderr=process.stderr,
+            returncode=process.returncode
+        )
         
         if process.returncode != 0:
             return Error(VerificationOutcome.ExecutionError(
@@ -141,59 +144,57 @@ def run_command(cmd: Block[str]) -> Result[CommandOutput, VerificationOutcome]:
 
 def run_verification(name: str, cmd: Block[str]) -> Result[str, VerificationOutcome]:
     """Runs a single verification check."""
-    if not cmd:
-        return Error(VerificationOutcome.ExecutionError(name, "Empty command"))
-        
-    try:
-        process = subprocess.run(
-            list(cmd), 
-            capture_output=True,
-            text=True
+    return (
+        run_command(cmd)
+        .bind(lambda output: 
+            Ok("✓ Passed") if output.returncode == 0
+            else Error(VerificationOutcome.Failure(name, output.stderr or output.stdout))
         )
-        
-        if process.returncode != 0:
-            return Error(VerificationOutcome.Failure(
-                name,
-                process.stderr or process.stdout or f"Command failed with code {process.returncode}"
-            ))
-            
-        return Ok(process.stdout)
-    except Exception as e:
-        return Error(VerificationOutcome.ExecutionError(
-            name,
-            str(e)
-        ))
+    )
 
 def process_verification_results(
     results: Block[tuple[str, Result[str, VerificationOutcome]]],
     console: Console
 ) -> Result[None, VerificationOutcome]:
     """Process verification results."""
-    try:
-        # Create and print summary table
-        table = create_summary_table(results)
-        console.print("\nVerification Results")
-        console.print(table)
-        
-        # Get failures
-        failures = results.filter(lambda r: r[1].is_error())
-        if not failures:
-            return Ok(None)
+    def display_results() -> Result[None, DisplayError]:
+        try:
+            # Create and print summary table
+            table = create_summary_table(results)
+            if table.is_error():
+                return table
             
-        # Show all failure details
-        for name, result in failures:
-            if result.is_error():
-                console.print(format_verification_output(result.error))
-                
+            return pipe(
+                display_rule("Verification Results", "cyan")
+                .bind(lambda _: Ok(console.print(table.ok)))
+                .bind(lambda _: 
+                    pipe(
+                        results.filter(lambda r: r[1].is_error()),
+                        seq.traverse(lambda f: 
+                            format_verification_output(f[1].error) if f[1].is_error()
+                            else Ok(None)
+                        )
+                    )
+                )
+            )
+        except Exception as e:
+            return Error(DisplayError.Rendering("Failed to display results", e))
+
+    result = with_ui_context(display_results)
+    if result.is_error():
+        return Error(VerificationOutcome.ExecutionError(
+            "Verification",
+            str(result.error)
+        ))
+
+    failures = results.filter(lambda r: r[1].is_error())
+    if failures:
         return Error(VerificationOutcome.Failure(
             "Verification",
             "One or more verifications failed"
         ))
-    except Exception as e:
-        return Error(VerificationOutcome.ExecutionError(
-            "Verification",
-            str(e)
-        ))
+
+    return Ok(None)
 
 @handle_command_errors
 def verify(check_type: str = "all", console: Console | None = None) -> None:
@@ -216,142 +217,10 @@ def verify(check_type: str = "all", console: Console | None = None) -> None:
     )
     
     if result.is_error():
-        ui_console.print(format_verification_output(result.error))
+        error_result = format_verification_output(result.error)
+        if error_result.is_error():
+            handle_ui_error(error_result.error)
     else:
-        ui_console.print("\n[bold green]✨ All verifications passed successfully![/bold green]")
-"""Verification commands for the CLI."""
-import subprocess
-from dataclasses import dataclass
-from typing import Generic, TypeVar, Callable
-from expression import Ok, Error, Result, pipe, effect, Effect
-from expression.collections import Block, seq
-
-from fcship.utils.file_utils import format_command
-
-# Define generic type parameter
-T = TypeVar('T')
-
-@dataclass(frozen=True)
-class CommandOutput:
-    """Output from a command execution."""
-    stdout: str
-    stderr: str
-    returncode: int
-
-@dataclass(frozen=True)
-class VerificationOutcome:
-    """Represents the outcome of a verification check."""
-    name: str
-    message: str
-
-    @classmethod
-    def Failure(cls, name: str, message: str) -> "VerificationOutcome":
-        """Create a failure outcome."""
-        return cls(name=name, message=message)
-
-    @classmethod
-    def ExecutionError(cls, command: str, error: str) -> "VerificationOutcome":
-        """Create an execution error outcome."""
-        return cls(
-            name="Execution Error", 
-            message=f"Failed to execute '{command}': {error}"
-        )
-
-# Registry of verification checks
-VERIFICATIONS: dict[str, list[str]] = {
-    "Style": ["black --check .", "flake8 ."],
-    "Types": ["mypy ."],
-    "Tests": ["pytest"]
-}
-
-def validate_check_type(check_type: str) -> Result[str, VerificationOutcome]:
-    """Validates the check type parameter."""
-    valid_types = pipe(
-        VERIFICATIONS.keys(),
-        Block.of_seq,
-        lambda b: b.append(Block.of_seq(["all"]))
-    )
-    
-    return (
-        Ok(check_type)
-        if check_type in valid_types
-        else Error(VerificationOutcome.ValidationError(
-            f"Invalid check type. Must be one of: {', '.join(valid_types)}"
-        ))
-    )
-
-def run_command_effect(cmd: Block[str]) -> Effect[CommandOutput, VerificationOutcome]:
-    """Run command as an effect."""
-    def execute() -> Result[CommandOutput, VerificationOutcome]:
-        try:
-            return Ok(run_command(cmd[0]))
-        except Exception as e:
-            return Error(VerificationOutcome.ExecutionError(cmd[0], str(e)))
-            
-    return Effect(execute)
-
-def run_verification(name: str, cmd: Block[str]) -> Effect[str, VerificationOutcome]:
-    """Run a single verification as an effect."""
-    return Effect(lambda: run_command_effect(cmd)
-                 .map(lambda output: 
-                      Ok("✓ Passed") if output.returncode == 0
-                      else Error(VerificationOutcome.Failure(name, output.stderr))))
-
-def verify_all() -> Result[list[tuple[str, Result[str, VerificationOutcome]]], str]:
-    """Run all verifications."""
-    return (pipe(
-        VERIFICATIONS,
-        Block.of_seq,
-        seq.map(lambda v: (v[0], verify_check(v[1]))),
-        Block.of_seq,
-        Ok
-    ))
-
-def verify_check(commands: list[str]) -> Result[str, VerificationOutcome]:
-    """Verify a single check."""
-    try:
-        for cmd in commands:
-            result = run_command(cmd)
-            if result.returncode != 0:  # Simplified logical expression
-                return Error(VerificationOutcome.Failure(
-                    format_command(cmd),
-                    result.stderr or result.stdout
-                ))
-        return Ok("✓ Passed")
-    except Exception as e:
-        return Error(VerificationOutcome.ExecutionError(
-            format_command(commands[0]),
-            str(e)
-        ))
-
-def run_command(command: str) -> CommandOutput:
-    """Run a shell command and return its output."""
-    try:
-        proc = subprocess.run(
-            command.split(),
-            capture_output=True,
-            text=True,
-            check=False
-        )
-        return CommandOutput(
-            stdout=proc.stdout,
-            stderr=proc.stderr,
-            returncode=proc.returncode
-        )
-    except subprocess.SubprocessError as e:
-        return CommandOutput("", str(e), -1)
-
-@effect.result[list[tuple[str, Effect[Result[str, VerificationOutcome]]]]]()
-def run_verifications() -> Result[list[tuple[str, Effect[Result[str, VerificationOutcome]]]], str]:
-    """Run all verifications with effects."""
-    return verify_all()
-
-@dataclass(frozen=True)
-class VerificationEffect(Generic[T]):
-    """Effect for verification operations."""
-    inner: Block[tuple[str, Effect[Result[str, VerificationOutcome]]]]
-
-    @staticmethod
-    def create(effects: Block[tuple[str, Effect[Result[str, VerificationOutcome]]]]) -> "VerificationEffect[T]":
-        """Create a new verification effect."""
-        return VerificationEffect(effects)
+        success_result = success_message("✨ All verifications passed successfully!")
+        if success_result.is_error():
+            handle_ui_error(success_result.error)
