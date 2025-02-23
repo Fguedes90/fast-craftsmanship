@@ -2,21 +2,19 @@
 import subprocess
 from typing import Literal, TypeVar
 from rich.console import Console
-from rich.panel import Panel
 from expression import Result, Ok, Error, pipe, tagged_union
 from expression.collections import Map, Block, seq
 from pydantic import BaseModel, Field, ConfigDict
 
 from fcship.utils.error_handling import handle_command_errors
 from fcship.utils.ui import (
-    create_panel, 
     create_summary_table,
-    display_message,
     error_message,
     success_message,
     display_rule,
     handle_ui_error,
     DisplayError,
+    DisplayResult,
     with_ui_context
 )
 
@@ -81,7 +79,7 @@ VERIFICATIONS = Map.of_seq([
     ("format", Block.of_seq(["black", "--check", "."]))
 ])
 
-def format_verification_output(outcome: VerificationOutcome) -> Result[None, DisplayError]:
+def format_verification_output(outcome: VerificationOutcome) -> DisplayResult:
     """Formats and displays verification outcome."""
     match outcome:
         case VerificationOutcome(tag="success"):
@@ -157,7 +155,7 @@ def process_verification_results(
     console: Console
 ) -> Result[None, VerificationOutcome]:
     """Process verification results."""
-    def display_results() -> Result[None, DisplayError]:
+    def display_results() -> DisplayResult:
         try:
             # Create and print summary table
             table = create_summary_table(results)
