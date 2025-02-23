@@ -87,13 +87,13 @@ def create_validation_error(msg: str) -> Result[None, typer.BadParameter]:
 def check(condition: bool, msg: str) -> ValidationResult:
     return Ok(None) if condition else Error(typer.BadParameter(msg))
 
-def validate_name_requirement(operation: str, requires_name: Block[str], name: Optional[str]) -> ValidationResult:
+def validate_name_requirement(operation: str, requires_name: Block[str], name: str | None) -> ValidationResult:
     return check(not (operation in requires_name and not name), f"Operation '{operation}' requires name")
 
 def validate_operation_existence(valid_ops: Block[str], operation: str) -> ValidationResult:
     return check(operation in valid_ops, f"Invalid operation: {operation}")
 
-def bind_name_validation(requires_name: Block[str], name: Optional[str], operation: str) -> Callable[[Result[None, typer.BadParameter]], Result[None, typer.BadParameter]]:
+def bind_name_validation(requires_name: Block[str], name: str | None, operation: str) -> Callable[[Result[None, typer.BadParameter]], Result[None, typer.BadParameter]]:
     return lambda _: validate_name_requirement(operation, requires_name, name)
 
 def validate_operation(
