@@ -1,40 +1,25 @@
 """UI utilities for CLI output."""
 
 import contextlib
-from typing import TypeVar, Literal, TypeGuard, Any, TypeAlias
-from collections.abc import Iterable, Callable
+from typing import TypeVar, Literal, TypeGuard, Any, TypeAlias, Optional, Sequence
+from collections.abc import Iterable, Callable, Awaitable
 import typer
-from expression import Result, Ok, Error, effect, Try, pipe, tagged_union
+from expression import Result, Ok, Error, effect, Try, pipe, Option, Some, Nothing
 from expression.collections import seq, Block
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.rule import Rule
+from .errors import DisplayError
+import asyncio
+from typing import Coroutine
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from contextlib import contextmanager
+from typing import Generator
 
 T = TypeVar('T')
+E = TypeVar('E')
 U = TypeVar('U')
-
-@tagged_union
-class DisplayError:
-    """Represents display-related errors."""
-    tag: Literal["validation", "rendering", "interaction"]
-    validation: str | None = None
-    rendering: tuple[str, Exception] | None = None
-    interaction: tuple[str, Exception] | None = None
-
-    @staticmethod
-    def Validation(message: str) -> "DisplayError":
-        """Create validation error."""
-        return DisplayError(tag="validation", validation=message)
-
-    @staticmethod
-    def Rendering(message: str, error: Exception) -> "DisplayError":
-        """Create rendering error."""
-        return DisplayError(tag="rendering", rendering=(message, error))
-
-    @staticmethod
-    def Interaction(message: str, error: Exception) -> "DisplayError":
-        """Create interaction error."""
-        return DisplayError(tag="interaction", interaction=(message, error))
 
 # Custom type aliases
 DisplayResult: TypeAlias = Result[None, DisplayError]
@@ -50,7 +35,7 @@ RecoveryStrategy: TypeAlias = dict[str, Callable[[], Result[T, DisplayError]]]
 ProgressProcessor: TypeAlias = Callable[[T], Result[U, str]]
 
 # Valid styles for Rich
-VALID_STYLES = {"red", "green", "blue", "yellow", "cyan", "magenta", "white", "black"}
+VALID_STYLES = tuple(sorted(["red", "green", "blue", "yellow", "cyan", "magenta", "white", "black"]))
 
 # Validation functions
 def is_valid_style(style: str) -> bool:
@@ -59,42 +44,47 @@ def is_valid_style(style: str) -> bool:
 
 def validate_style(style: str) -> ValidationResult:
     """Validate a style string."""
-    return (validate_input(style, "Style")
-            .bind(lambda s: Ok(s) if is_valid_style(s)
-                  else Error(DisplayError.Validation(f"Invalid style: {s}. Must be one of: {', '.join(VALID_STYLES)}"))))
+    return pipe(
+        validate_input(style, "Style"),
+        lambda s: Ok(s) if is_valid_style(s)
+        else Error(DisplayError.Validation(f"Invalid style: {s}. Must be one of: {', '.join(VALID_STYLES)}"))
+    )
 
 def is_table_row(value: Any) -> TypeGuard[tuple[str, str]]:
     """Type guard for table row tuple."""
-    if not isinstance(value, tuple):
-        return False
-    if len(value) != 2:
-        return False
-    return all(isinstance(x, str) for x in value)
+    return (
+        isinstance(value, tuple) and 
+        len(value) == 2 and 
+        all(isinstance(x, str) for x in value)
+    )
 
 def validate_table_row(row: Any) -> TableRowResult:
     """Validate a table row."""
-    if not is_table_row(row):
-        return Error(DisplayError.Validation("Row must be a tuple of two strings"))
-    return Ok(row)
+    return Ok(row) if is_table_row(row) else Error(DisplayError.Validation("Row must be a tuple of two strings"))
 
 def validate_table_data(headers: list[str], rows: TableData) -> DisplayResult:
     """Validate table headers and rows."""
     if not headers:
         return Error(DisplayError.Validation("Headers list cannot be empty"))
-    if not all(isinstance(h, str) for h in headers):
-        return Error(DisplayError.Validation("Headers must be strings"))
-    if any(len(row) != len(headers) for row in rows):
-        return Error(DisplayError.Validation("All rows must have same length as headers"))
-    if not all(all(isinstance(cell, str) for cell in row) for row in rows):
-        return Error(DisplayError.Validation("All cells must be strings"))
-    return Ok(None)
+    
+    return pipe(
+        headers,
+        lambda h: Ok(h) if all(isinstance(h, str) for h in headers)
+        else Error(DisplayError.Validation("Headers must be strings")),
+        lambda _: Ok(rows) if all(len(row) == len(headers) for row in rows)
+        else Error(DisplayError.Validation("All rows must have same length as headers")),
+        lambda _: Ok(rows) if all(all(isinstance(cell, str) for cell in row) for row in rows)
+        else Error(DisplayError.Validation("All cells must be strings")),
+        lambda _: Ok(None)
+    )
 
 def validate_panel_inputs(title: str, content: str, style: str) -> Result[tuple[str, str, str], DisplayError]:
     """Validate panel creation inputs."""
-    return (validate_input(title, "Title")
-            .bind(lambda t: validate_input(content, "Content")
-                  .bind(lambda s: validate_style(style)
-                        .map(lambda s: (t, content, s)))))
+    return pipe(
+        validate_input(title, "Title"),
+        lambda t: validate_input(content, "Content").map(lambda c: (t, c)),
+        lambda tc: validate_style(style).map(lambda s: (tc[0], tc[1], s))
+    )
 
 def validate_progress_inputs[T](
     items: Iterable[T],
@@ -104,13 +94,14 @@ def validate_progress_inputs[T](
     """Validate progress display inputs."""
     try:
         items_list = list(items)
-        if not items_list:
-            return Error(DisplayError.Validation("Items list cannot be empty"))
-            
-        if not callable(process_fn):
-            return Error(DisplayError.Validation("Process function must be callable"))
-            
-        return validate_input(description, "Description").map(lambda _: None)
+        return pipe(
+            items_list,
+            lambda i: Error(DisplayError.Validation("Items list cannot be empty")) if not i
+            else Ok(i),
+            lambda _: Error(DisplayError.Validation("Process function must be callable")) if not callable(process_fn)
+            else Ok(None),
+            lambda _: validate_input(description, "Description").map(lambda _: None)
+        )
     except Exception as e:
         return Error(DisplayError.Validation(f"Invalid progress inputs: {str(e)}"))
 
@@ -118,38 +109,50 @@ console = Console()
 
 def validate_input(value: str | None, name: str) -> ValidationResult:
     """Validates string input is not empty."""
-    if not value:
-        return Error(DisplayError.Validation(f"{name} cannot be empty"))
-    return Ok(value)
+    return Ok(value) if value else Error(DisplayError.Validation(f"{name} cannot be empty"))
 
-@effect.try_[None]()
-def display_message(message: str, style: str) -> None:
-    """Display a message with given style using Expression's Try effect."""
+async def display_message(message: Optional[str], style: Optional[str] = None) -> Result[None, DisplayError]:
+    """Display a message with optional styling."""
+    if message is None:
+        return Error(DisplayError.Validation("Message cannot be None"))
     if not message:
-        raise ValueError("Message cannot be empty")
-    console.print(f"[{style}]{message}[/{style}]")
+        return Ok(None)
+    try:
+        if style:
+            console.print(f"[{style}]{message}[/{style}]")
+        else:
+            console.print(message)
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display message", e))
 
-# Update function signatures to use DisplayResult
-def success_message(message: str) -> DisplayResult:
+async def success_message(message: str) -> Result[None, DisplayError]:
     """Display a success message."""
-    return (validate_input(message, "Message")
-            .bind(lambda m: Try.apply(lambda: display_message(m, "green"))
-                  .map_error(lambda e: DisplayError.Rendering("Failed to display success message", e))))
+    return await display_message(message, "green")
 
-def error_message(message: str, details: str | None = None) -> DisplayResult:
+async def error_message(message: str, details: Optional[str] = None) -> Result[None, DisplayError]:
     """Display an error message with optional details."""
-    return (validate_input(message, "Message")
-            .bind(lambda m: Ok(f"{m}\n\n{details}" if details else m))
-            .bind(lambda m: Try.apply(lambda: display_message(m, "red"))
-                  .map_error(lambda e: DisplayError.Rendering("Failed to display error message", e))))
+    try:
+        console.print(f"[red]{message}[/red]")
+        if details:
+            console.print(f"[red dim]Details: {details}[/red dim]")
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display error message", e))
+
+async def warning_message(message: str) -> Result[None, DisplayError]:
+    """Display a warning message."""
+    return await display_message(message, "yellow")
 
 def create_table_row(name_result: tuple[str, Result[str, T]]) -> TableRowResult:
     """Creates a single table row from a result."""
     name, result = name_result
-    return (validate_input(name, "Row name")
-            .map(lambda n: (n.title(), 
-                          "[green]✨ Passed[/green]" if result.is_ok() 
-                          else "[red]❌ Failed[/red]")))
+    return pipe(
+        validate_input(name, "Row name"),
+        lambda n: Ok((n.title(), 
+                   "[green]✨ Passed[/green]" if result.is_ok() 
+                   else "[red]❌ Failed[/red]"))
+    )
 
 def add_row_to_table(table: Table, row: TableRow) -> TableResult:
     """Adds a row to the table in a functional way."""
@@ -163,10 +166,11 @@ def add_row_to_table(table: Table, row: TableRow) -> TableResult:
 
 def create_panel(title: str, content: str, style: str) -> PanelResult:
     """Creates a panel with the given parameters."""
-    return (validate_input(title, "Title")
-            .bind(lambda t: validate_input(content, "Content")
-                  .bind(lambda c: validate_input(style, "Style")
-                        .map(lambda s: Panel(c, title=t, border_style=s)))))
+    return pipe(
+        validate_panel_inputs(title, content, style),
+        lambda inputs: Try.create(lambda: Panel(content, title=title, border_style=style))
+            .map_error(lambda e: DisplayError.Rendering("Failed to create panel", e))
+    )
 
 def create_summary_table[T](results: Block[tuple[str, Result[str, T]]]) -> TableResult:
     """Creates a summary table of verification results."""
@@ -190,109 +194,94 @@ def format_message(parts: list[str], separator: str = "\n\n") -> ValidationResul
     if not isinstance(parts, list):
         return Error(DisplayError.Validation("Message parts must be a list"))
 
-    if filtered_parts := list(filter(None, parts)):
-        return Ok(separator.join(filtered_parts))
-    else:
-        return Error(DisplayError.Validation("At least one non-empty message part is required"))
-
-def display_table(headers: list[str], rows: TableData, title: str | None = None) -> DisplayResult:
-    """Display a table using Rich for formatting."""
-    if not headers:
-        return Error(DisplayError.Validation("Headers list cannot be empty"))
-    if not all(isinstance(h, str) for h in headers):
-        return Error(DisplayError.Validation("Headers must be strings"))
-    
-    def _display() -> None:
-        table = Table(title=title) if title else Table()
-        for header in headers:
-            table.add_column(header)
-        for row in rows:
-            if len(row) != len(headers):
-                raise ValueError(f"Row length {len(row)} does not match headers length {len(headers)}")
-            table.add_row(*row)
-        console.print(table)
-    
-    return Try.apply(_display).map_error(lambda e: DisplayError.Rendering("Failed to display table", e))
-
-def confirm_action(prompt: str) -> Result[bool, DisplayError]:
-    """Display a confirmation prompt and return the boolean result."""
-    return (validate_input(prompt, "Prompt")
-            .bind(lambda p: Try.apply(lambda: typer.confirm(p))
-                  .map_error(lambda e: DisplayError.Interaction("Failed to get user confirmation", e))))
-
-def display_rule(message: str, style: str = "blue") -> DisplayResult:
-    """Display a horizontal rule with a centered message."""
-    return (validate_input(message, "Message")
-            .bind(lambda m: Try.apply(lambda: console.rule(m, style=style))
-                  .map_error(lambda e: DisplayError.Rendering("Failed to display rule", e))))
-
-def warning_message(message: str) -> DisplayResult:
-    """Display a warning message with yellow style."""
-    return (validate_input(message, "Message")
-            .bind(lambda m: Try.apply(lambda: display_message(m, "yellow"))
-                  .map_error(lambda e: DisplayError.Rendering("Failed to display warning", e))))
-
-def batch_display_messages(messages: list[tuple[str, StyleValidator]]) -> DisplayResult:
-    """Display multiple messages with their styles in sequence."""
-    def display_single(msg_style: tuple[str, str]) -> DisplayResult:
-        msg, style = msg_style
-        return (validate_input(msg, "Message")
-                .bind(lambda m: Try.apply(lambda: display_message(m, style))
-                      .map_error(lambda e: DisplayError.Rendering(f"Failed to display message: {m}", e))))
-    
     return pipe(
-        messages,
-        Block.of_seq,
-        seq.traverse(display_single),
-        Result.map(lambda _: None)
+        parts,
+        lambda p: list(filter(None, p)),
+        lambda filtered: Ok(separator.join(filtered)) if filtered
+        else Error(DisplayError.Validation("At least one non-empty message part is required"))
     )
 
 def create_multi_column_table(
-    columns: list[tuple[str, StyleValidator]],
-    rows: TableData,
-    title: str | None = None
-) -> TableResult:
-    """Create a table with multiple styled columns."""
-    if not columns:
-        return Error(DisplayError.Validation("Must provide at least one column"))
-        
+    columns: list[tuple[str, Optional[str]]],
+    rows: list[list[str]]
+) -> Result[Table, DisplayError]:
+    """Create a multi-column table."""
     try:
-        table = Table(title=title) if title else Table()
+        if not columns:
+            return Error(DisplayError.Validation("Headers list cannot be empty"))
+        
+        if not all(isinstance(col[0], str) for col in columns):
+            return Error(DisplayError.Validation("Headers must be strings"))
+        
+        if not all(len(row) == len(columns) for row in rows):
+            return Error(DisplayError.Rendering("Row length must match number of columns"))
+        
+        table = Table()
         for header, style in columns:
             table.add_column(header, style=style)
-            
+        
         for row in rows:
-            if len(row) != len(columns):
-                raise ValueError(f"Row has {len(row)} values but table has {len(columns)} columns")
             table.add_row(*row)
-            
+        
         return Ok(table)
     except Exception as e:
         return Error(DisplayError.Rendering("Failed to create table", e))
 
-def prompt_for_input(
-    prompt: str,
-    validator: StyleValidator | None = None
-) -> ValidationResult:
-    """Prompt for user input with optional validation."""
-    return (validate_input(prompt, "Prompt")
-            .bind(lambda p: Try.apply(lambda: input(p))
-                  .map_error(lambda e: DisplayError.Interaction("Failed to get user input", e)))
-            .bind(lambda value: 
-                  validator(value) if validator 
-                  else Ok(value)))
+async def display_table(table: Table) -> Result[None, DisplayError]:
+    """Display a table."""
+    try:
+        console.print(table)
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display table", e))
 
-def display_indented_text(
-    text: str, 
-    indent: int = 2,
-    style: StyleValidator | None = None
-) -> DisplayResult:
-    """Display text with specified indentation and optional style."""
-    return (validate_input(text, "Text")
-            .map(lambda t: "\n".join(" " * indent + line for line in t.splitlines()))
-            .bind(lambda indented: Try.apply(
-                lambda: console.print(indented, style=style) if style else console.print(indented)
-            ).map_error(lambda e: DisplayError.Rendering("Failed to display indented text", e))))
+async def confirm_action(message: str) -> Result[bool, DisplayError]:
+    """Prompt for user confirmation."""
+    try:
+        return Ok(typer.confirm(message))
+    except Exception as e:
+        return Error(DisplayError.Interaction("Failed to get user confirmation", e))
+
+async def display_rule(message: str, style: Optional[str] = None) -> Result[None, DisplayError]:
+    """Display a horizontal rule with optional message."""
+    try:
+        rule = Rule(message, style=style)
+        console.print(rule)
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display rule", e))
+
+def batch_display_messages(messages: list[tuple[str, str]]) -> Result[None, DisplayError]:
+    """Display multiple messages with different styles."""
+    try:
+        results = []
+        for msg, style in messages:
+            if not msg or not style:
+                return Error(DisplayError.Validation("Message and style cannot be empty"))
+            console.print(f"[{style}]{msg}[/{style}]")
+            results.append(Ok(None))
+        return Ok(None) if all(r.is_ok() for r in results) else Error(DisplayError.Rendering("Failed to display all messages"))
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display messages", e))
+
+async def prompt_for_input(prompt: str, validator: callable) -> Result[str, DisplayError]:
+    """Prompt for user input with validation."""
+    try:
+        value = typer.prompt(prompt)
+        if validator(value):
+            return Ok(value)
+        return Error(DisplayError.Validation("Invalid input"))
+    except Exception as e:
+        return Error(DisplayError.Interaction("Failed to get user input", e))
+
+async def display_indented_text(text: str, level: int = 1) -> Result[None, DisplayError]:
+    """Display indented text."""
+    try:
+        indent = "  " * level
+        console.print(f"{indent}{text}")
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to display indented text", e))
 
 def create_nested_panel(
     title: str,
@@ -306,39 +295,75 @@ def create_nested_panel(
                   pipe(
                       sections,
                       Block.of_seq,
-                      seq.traverse(lambda section:
-                          create_panel(section[0], section[1], inner_style)
-                      ),
-                      Result.map(lambda panels: "\n".join(str(p) for p in panels)),
-                      Result.bind(lambda content: create_panel(t, content, outer_style))
+                      lambda block: [create_panel(section[0], section[1], inner_style) for section in block],
+                      lambda panels: Ok("\n".join(str(p.ok) for p in panels if p.is_ok())) if all(p.is_ok() for p in panels)
+                      else Error(DisplayError.Validation("Failed to create inner panels")),
+                      lambda content: content.bind(lambda c: create_panel(t, c, outer_style))
                   )))
 
-def display_progress[T, U](
-    items: Iterable[T],
-    process_fn: ProgressProcessor[T, U],
-    description: str = "Processing"
-) -> DisplayResult:
-    """Display progress while processing items."""
-    from rich.progress import Progress
-    
+async def display_progress[T, E](items: list[T], process: Callable[[T], Awaitable[Result[str, E]]], description: str) -> Result[None, DisplayError]:
+    """Display a progress bar while processing items."""
+    return pipe(
+        validate_progress_inputs(items, process, description),
+        lambda _: Try.create(lambda: Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn()
+        )).map_error(lambda e: DisplayError.Rendering("Failed to create progress bar", e)),
+        lambda progress: safe_display_with_progress(progress, items, process, description)
+    )
+
+async def safe_display_with_progress[T, E](
+    progress: Progress, 
+    items: list[T], 
+    process: Callable[[T], Awaitable[Result[str, E]]], 
+    description: str
+) -> Result[None, DisplayError]:
+    """Safely display progress with error aggregation."""
     try:
-        with Progress() as progress:
-            task = progress.add_task(description, total=len(list(items)))
+        with progress:
+            task = progress.add_task(description, total=len(items))
+            errors = []
             
-            results = []
             for item in items:
-                result = process_fn(item)
+                result = await process(item)
                 if result.is_error():
-                    console.print(f"[red]Error processing item: {result.error}[/red]")
-                results.append(result)
+                    errors.append(result.unwrap_error())
                 progress.advance(task)
-                
-            if any(r.is_error() for r in results):
-                return Error(DisplayError.Validation("Some items failed to process"))
-            return Ok(None)
             
+            if errors:
+                return Error(DisplayError.Execution("Some items failed to process", errors))
+            return Ok(None)
     except Exception as e:
         return Error(DisplayError.Rendering("Failed to display progress", e))
+
+async def safe_display[T](display_fn: Callable[..., Awaitable[Result[T, DisplayError]]], *args, **kwargs) -> Result[T, DisplayError]:
+    """Safely execute a display function with error handling."""
+    try:
+        return await display_fn(*args, **kwargs)
+    except Exception as e:
+        return Error(DisplayError.Rendering(f"Failed to execute {display_fn.__name__}", e))
+
+@contextmanager
+def with_ui_context() -> Generator[None, None, None]:
+    """Context manager for UI setup and cleanup."""
+    try:
+        console.clear()
+        yield
+    except Exception as e:
+        error_message(f"UI error: {str(e)}")
+    finally:
+        console.clear()
+
+def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
+    """Handle UI errors in a functional way."""
+    return pipe(
+        error,
+        lambda e: error_message(str(e), str(e.details) if hasattr(e, 'details') else None),
+        lambda _: Error(error)
+    )
 
 def with_fallback[T](
     operation: Callable[[], Result[T, DisplayError]], 
@@ -363,7 +388,7 @@ def with_fallback[T](
                 console.print(f"[red]{error_message}: {str(e)}[/red]")
         return fallback
 
-def with_retry[T](
+async def with_retry[T](
     operation: Callable[[], Result[T, DisplayError]],
     max_attempts: int = 3,
     delay: float = 1.0
@@ -378,24 +403,9 @@ def with_retry[T](
 
         if attempt < max_attempts - 1:
             with contextlib.suppress(Exception):
-                warning_message(f"Operation failed, retrying in {delay} seconds...")
-                sleep(delay)
+                await warning_message(f"Operation failed, retrying in {delay} seconds...")
+                await asyncio.sleep(delay)
     return result  # Return last error result
-
-def handle_ui_error(error: DisplayError) -> DisplayResult:
-    """Handle UI errors in a consistent way."""
-    match error:
-        case DisplayError(tag="validation", validation=msg):
-            return display_message(f"Validation Error: {msg}", "red")
-            
-        case DisplayError(tag="rendering", rendering=(msg, exc)):
-            return display_message(f"Display Error: {msg}\n{str(exc)}", "red")
-            
-        case DisplayError(tag="interaction", interaction=(msg, exc)):
-            return display_message(f"Input Error: {msg}\n{str(exc)}", "red")
-            
-        case _:
-            return Error(DisplayError.Validation("Unknown error type"))
 
 def aggregate_errors(errors: Block[DisplayError]) -> DisplayError:
     """Combine multiple errors into a single validation error."""
@@ -477,3 +487,24 @@ def with_ui_context[T](
         return Error(DisplayError.Validation(str(e)))
     except RuntimeError as e:
         return Error(DisplayError.Rendering("Operation failed", e))
+
+async def run_with_timeout(
+    computation: Coroutine[Any, Any, Result[T, DisplayError]],
+    timeout: float = 1.0,
+) -> Result[T, DisplayError]:
+    """Run a computation with a timeout.
+
+    Args:
+        computation: The computation to run.
+        timeout: The timeout in seconds.
+
+    Returns:
+        The result of the computation, or an error if the computation timed out.
+    """
+    try:
+        result = await asyncio.wait_for(computation, timeout=timeout)
+        return result
+    except asyncio.TimeoutError:
+        return Error(DisplayError(tag="timeout", timeout=(f"Operation timed out after {timeout} seconds", Exception("Timeout"))))
+    except Exception as e:
+        return Error(DisplayError(tag="execution", execution=("Operation failed", str(e))))

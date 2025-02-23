@@ -195,7 +195,7 @@ def process_verification_results(
     return Ok(None)
 
 @handle_command_errors
-def verify(check_type: str = "all", console: Console | None = None) -> None:
+async def verify(check_type: str = "all", console: Console | None = None) -> None:
     """Run verification checks."""
     ui_console = console or Console()
     
@@ -217,8 +217,8 @@ def verify(check_type: str = "all", console: Console | None = None) -> None:
     if result.is_error():
         error_result = format_verification_output(result.error)
         if error_result.is_error():
-            handle_ui_error(error_result.error)
+            await handle_ui_error(error_result.error)
     else:
         success_result = success_message("✨ All verifications passed successfully!")
         if success_result.is_error():
-            handle_ui_error(success_result.error)
+            await handle_ui_error(success_result.error)
