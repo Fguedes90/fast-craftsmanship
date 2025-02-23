@@ -28,31 +28,20 @@ def _handle_error(e: Exception) -> Result[Any, CommandError]:
 def handle_command_errors(fn: Callable[..., T] | Callable[..., Awaitable[T]]) -> Callable[..., T] | Callable[..., Awaitable[T]]:
     """Decorator to handle command errors using Railway-Oriented Programming pattern.
 
-    Converts exceptions to Result type and wraps side effects in effect monad.
-    Following the functional programming guidelines for error handling.
+    Converts exceptions to Result type and wraps side effects in the effect monad,
+    using a fully functional style.
     """
+    def handle_result(r: Result[T, Exception]) -> T:
+        return r.match(lambda value: value, lambda error: _handle_and_exit(error))
+
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            # Convert async function to effect and handle errors
             effect_result = await effect.from_async(fn)(*args, **kwargs).to_awaitable()
-            return pipe(
-                effect_result,
-                lambda r: r.match(
-                    lambda value: value,
-                    lambda error: _handle_and_exit(error)
-                )
-            )
+            return pipe(effect_result, handle_result)
         return wrapper
     else:
         def wrapper(*args: Any, **kwargs: Any) -> T:
-            # Convert sync function to effect and handle errors
-            return pipe(
-                effect.try_(fn)(*args, **kwargs),
-                lambda r: r.match(
-                    lambda value: value,
-                    lambda error: _handle_and_exit(error)
-                )
-            )
+            return pipe(effect.try_(fn)(*args, **kwargs), handle_result)
         return wrapper
 
 def _handle_and_exit(error: Exception) -> None:
@@ -66,14 +55,12 @@ def validate_operation(
     name: str | None = None,
     requires_name: list[str] | None = None
 ) -> Result[str, Exception]:
-    """Validate command operation and arguments using Railway-Oriented Programming pattern."""
-    if operation not in valid_operations:
-        valid_ops = ", ".join(valid_operations)
-        return Error(typer.BadParameter(
-            f"Invalid operation: {operation}. Valid operations: {valid_ops}"
+    return (
+        Ok(operation)
+        .bind(lambda op: Ok(op) if op in valid_operations else Error(
+            typer.BadParameter(f"Invalid operation: {op}. Valid operations: {', '.join(valid_operations)}")
         ))
-    if requires_name and operation in requires_name and not name:
-        return Error(typer.BadParameter(
-            f"Operation '{operation}' requires a name parameter"
+        .bind(lambda op: Ok(op) if not (requires_name and op in requires_name and not name) else Error(
+            typer.BadParameter(f"Operation '{op}' requires a name parameter")
         ))
-    return Ok(operation)
+    )
