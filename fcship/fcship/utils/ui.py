@@ -4,7 +4,7 @@ import contextlib
 from typing import TypeVar, Literal, TypeGuard, Any, TypeAlias, Optional, Sequence
 from collections.abc import Iterable, Callable, Awaitable
 import typer
-from expression import Result, Ok, Error, effect, Try, pipe, Option, Some, Nothing
+from expression import Result, Ok, Error, effect, Try, pipe, pipeline, Option, Some, Nothing
 from expression.collections import seq, Block
 from rich.console import Console
 from rich.panel import Panel
