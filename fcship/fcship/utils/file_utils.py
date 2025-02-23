@@ -29,10 +29,10 @@ class FileStatus(NamedTuple):
 
 @dataclass(frozen=True)
 class FileCreationTracker:
-    files: Block[FileStatus] = field(default_factory=Block.empty)
+    files: Map[str, str] = field(default_factory=lambda: Map.empty())
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
+        return Ok(FileCreationTracker(self.files.set(path, status)))
 
 @dataclass(frozen=True)
 class FileOperation:
@@ -78,8 +78,9 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 
 
-def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult:
-    return files.fold(
+def process_all_files(base: Path, files: Map[str, str], tracker: FileCreationTracker) -> FileResult:
+    block_files = Block.of_seq(list(files.items()))
+    return block_files.fold(
         lambda acc, item: pipe(
             acc,
             result.bind(lambda tr: create_single_file(tr, build_file_path(base, item)))
