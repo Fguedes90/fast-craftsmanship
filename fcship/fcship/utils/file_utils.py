@@ -31,7 +31,7 @@ class FileCreationTracker:
     files: Map[str, str] = field(default_factory=Map.empty)
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return Ok(FileCreationTracker(self.files.set(path, status)))
+        return Ok(FileCreationTracker(self.files.put(path, status)))
 
 @dataclass(frozen=True)
 class FileOperation:
