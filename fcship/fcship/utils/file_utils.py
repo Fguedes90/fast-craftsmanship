@@ -135,6 +135,9 @@ def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]
 def init_file_creation_tracker() -> Result[FileCreationTracker, FileError]:
     return Ok(FileCreationTracker())
 
+def file_creation_status(tracker: FileCreationTracker) -> str:
+    return f"Created files: {list(tracker.files.keys())}"
+
 __all__ = [
     "FileError",
     "FileOperation",
