@@ -28,7 +28,10 @@ def _on_error(e: Exception) -> None:
 
 def handle_command_errors(fn: Fn) -> Fn:
     def handle_result(r: Result[T, Exception]) -> T:
-        return r.match(lambda v: v, _on_error)
+        if r.is_ok():
+            return r.ok
+        else:
+            return _on_error(r.error)
     if asyncio.iscoroutinefunction(fn):
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             try:
