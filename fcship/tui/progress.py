@@ -1,4 +1,5 @@
 import asyncio
+from typing import Coroutine
 from expression import Ok, Error, Result, pipe, Try
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 from fcship.fcship.utils.errors import DisplayError
@@ -33,7 +34,7 @@ async def safe_display_with_progress(progress: Progress, items: list, process: c
     except Exception as e:
         return Error(DisplayError.Rendering("Failed to display progress", e))
 
-async def run_with_timeout(computation: "Coroutine", timeout: float = 1.0) -> Result:
+async def run_with_timeout(computation: Coroutine, timeout: float = 1.0) -> Result:
     try:
         result = await asyncio.wait_for(computation, timeout=timeout)
         return result
