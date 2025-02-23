@@ -1,4 +1,4 @@
-from expression import Ok, Error, Result, pipe, seq
+from expression import Ok, Error, Result, pipe
 from rich.table import Table
 from fcship.tui.helpers import validate_table_row, validate_table_data, validate_input
 from fcship.tui.errors import DisplayError

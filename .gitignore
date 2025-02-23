@@ -9,3 +9,4 @@ node_modules/
 **/__pycache__/
 **/*.gz
 **/fschip.egg-info/*.txt
+**/.coverage

@@ -1,5 +1,5 @@
 # Deprecated: All UI content has been moved to the fcship/tui module.
-from typing import Any, Optional, Callable, TypeVar, Generator
+from typing import Any, Optional, Callable, TypeVar, Generator, Iterable, Awaitable, Coroutine
 from typing_extensions import TypeGuard, TypeAlias
 from expression import Ok, Error, Result, pipe, Try
 from expression.collections import Block, seq
@@ -7,15 +7,24 @@ from rich.console import Console
 from rich.panel import Panel
 from contextlib import contextmanager
 from ..tui.errors import DisplayError
+from rich.table import Table
+from rich.progress import Progress, TaskID
 
+# Type variables
 T = TypeVar('T')
 U = TypeVar('U')
-TableRow: TypeAlias = tuple[str, str]
-TableData: TypeAlias = list[TableRow]
-TableRowResult: TypeAlias = Result[TableRow, DisplayError]
-DisplayResult: TypeAlias = Result[None, DisplayError]
-ValidationResult: TypeAlias = Result[str, DisplayError]
-ProgressProcessor: TypeAlias = Callable[[T], Result[U, str]]
+
+# Type definitions
+TableRow = list[str]
+TableData = list[TableRow]
+TableResult = Result[Table, str]
+TableRowResult = Result[TableRow, DisplayError]
+DisplayResult = Result[None, DisplayError]
+ValidationResult = Result[str, DisplayError]
+ProgressProcessor = Callable[[T], Result[U, str]]
+PanelResult = Result[Panel, str]
+RecoveryStrategy = dict[str, Callable[[], Result[T, DisplayError]]]
+DisplayFunction = Callable[[T], Result[None, DisplayError]]
 VALID_STYLES: tuple[str, ...] = ("red", "green", "blue", "yellow", "cyan", "magenta", "white", "black")
 
 # Validation functions

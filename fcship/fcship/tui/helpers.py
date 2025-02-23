@@ -6,22 +6,31 @@ def validate_input(value: str | None, name: str) -> Result[str, DisplayError]:
     return Ok(value) if value else Error(DisplayError.Validation(f"{name} cannot be empty"))
 
 def is_valid_style(style: str) -> bool:
-    VALID_STYLES = ("red", "green", "blue", "yellow", "cyan", "magenta", "white", "black")
-    return style in VALID_STYLES
+    VALID_STYLES = ("red", "green", "blue", "yellow", "cyan", "magenta", "white", "black", "bold red")
+    return any(s in style for s in VALID_STYLES)
 
 def validate_style(style: str) -> Result[str, DisplayError]:
-    return pipe(
-        validate_input(style, "Style"),
-        lambda s: Ok(s) if is_valid_style(s)
-            else Error(DisplayError.Validation(f"Invalid style: {s}. Must be one of: red, green, blue, yellow, cyan, magenta, white, black"))
-    )
+    validation = validate_input(style, "Style")
+    if validation.is_error():
+        return validation
+    if not is_valid_style(style):
+        return Error(DisplayError.Validation(f"Invalid style: {style}. Must contain one of: red, green, blue, yellow, cyan, magenta, white, black"))
+    return Ok(style)
 
 def validate_panel_inputs(title: str, content: str, style: str) -> Result[tuple[str, str, str], DisplayError]:
-    return pipe(
-        validate_input(title, "Title"),
-        lambda t: validate_input(content, "Content").map(lambda c: (t, c)),
-        lambda tc: validate_style(style).map(lambda s: (tc[0], tc[1], s))
-    )
+    title_result = validate_input(title, "Title")
+    if title_result.is_error():
+        return title_result
+    
+    content_result = validate_input(content, "Content")
+    if content_result.is_error():
+        return content_result
+    
+    style_result = validate_style(style)
+    if style_result.is_error():
+        return style_result
+    
+    return Ok((title_result.ok, content_result.ok, style_result.ok))
 
 def validate_table_row(row: any) -> Result[tuple[str, str], DisplayError]:
     if isinstance(row, tuple) and len(row) == 2 and all(isinstance(x, str) for x in row):
@@ -43,11 +52,15 @@ def validate_table_data(headers: list[str], rows: list[tuple[str, str]]) -> Resu
 def validate_progress_inputs(items: Iterable, process_fn: callable, description: str) -> Result[None, DisplayError]:
     try:
         items_list = list(items)
-        return pipe(
-            items_list,
-            lambda i: Ok(i) if i else Error(DisplayError.Validation("Items list cannot be empty")),
-            lambda _: Ok(None) if callable(process_fn) else Error(DisplayError.Validation("Process function must be callable")),
-            lambda _: validate_input(description, "Description").map(lambda _: None)
-        )
+        if not items_list:
+            return Error(DisplayError.Validation("Items list cannot be empty"))
+        if not callable(process_fn):
+            return Error(DisplayError.Validation("Process function must be callable"))
+        
+        desc_result = validate_input(description, "Description")
+        if desc_result.is_error():
+            return desc_result
+            
+        return Ok(None)
     except Exception as e:
         return Error(DisplayError.Validation(f"Invalid progress inputs: {str(e)}"))
