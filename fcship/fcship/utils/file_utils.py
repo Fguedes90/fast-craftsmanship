@@ -42,13 +42,13 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
+    return try_.try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
            .map(lambda _: None)\
            .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return try_(lambda: path.write_text(content))\
+    return try_.try_(lambda: path.write_text(content))\
            .map(lambda _: None)\
            .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
 
@@ -131,3 +131,14 @@ def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]
 
 def init_file_creation_tracker() -> Result[FileCreationTracker, FileError]:
     return Ok(FileCreationTracker())
+
+__all__ = [
+    "FileError",
+    "FileOperation",
+    "ensure_directory",
+    "write_file",
+    "create_single_file",
+    "create_files",
+    "validate_operation",
+    "init_file_creation_tracker"
+]
