@@ -3,7 +3,6 @@ from pathlib import Path
 import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, Try, pipe, result
 from expression.collections import Map, Block
-from expression.core.try_ import try_
 from typing import NamedTuple
 from dataclasses import dataclass, field
 
@@ -29,10 +28,10 @@ class FileStatus(NamedTuple):
 
 @dataclass(frozen=True)
 class FileCreationTracker:
-    files: Map[str, str] = field(default_factory=lambda: Map.empty())
+    files: Block[FileStatus] = field(default_factory=Block.empty)
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return Ok(FileCreationTracker(self.files.set(path, status)))
+        return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
 @dataclass(frozen=True)
 class FileOperation:
@@ -42,13 +41,13 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
-           .map(lambda _: None)\
-           .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
+    return Ok(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
+        .map(lambda _: None)\
+        .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return try_(lambda: path.write_text(content))\
+    return Ok(lambda: path.write_text(content))\
            .map(lambda _: None)\
            .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
 
@@ -78,9 +77,8 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 
 
-def process_all_files(base: Path, files: Map[str, str], tracker: FileCreationTracker) -> FileResult:
-    block_files = Block.of_seq(list(files.items()))
-    return block_files.fold(
+def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult:
+    return files.fold(
         lambda acc, item: pipe(
             acc,
             result.bind(lambda tr: create_single_file(tr, build_file_path(base, item)))
