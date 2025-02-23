@@ -145,6 +145,7 @@ __all__ = [
     "write_file",
     "create_single_file",
     "create_files",
+    "file_creation_status",
     "validate_operation",
     "init_file_creation_tracker"
 ]
