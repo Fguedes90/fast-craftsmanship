@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 import typer
-from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
+from expression import Result, Ok, Error, Option, Some, Nothing, Try, pipe, result
 from expression.collections import Map, Block
 from expression.core import try_
 from typing import NamedTuple
@@ -35,13 +35,15 @@ class FileCreationTracker:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
 
-@try_(FileError)
-def ensure_directory(path: Path) -> FileResult[None]:
-    path.parent.mkdir(parents=True, exist_ok=True)
 
-@try_(FileError)
+def ensure_directory(path: Path) -> FileResult[None]:
+    return Try(
+        path.parent.mkdir(parents=True, exist_ok=True), 
+        FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
+
+
 def write_file(path: Path, content: str) -> FileResult[None]:
-    path.write_text(content)
+    return Try(path.write_text(content), FileError(f"Failed to write file: {path}", str(path)))
 
 
 def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> FileResult[FileCreationTracker]:
