@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Callable, TypeVar, Tuple
+from typing import TypeVar, Tuple
 import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
 from expression.collections import Map, Block
@@ -79,7 +79,7 @@ def create_files(files: Map[str, str], base_path: str = "") -> FileResult[FileCr
     )
 
 def format_error_message(msg: str, value: str = "") -> str:
-    return f"{msg}{(': ' + value) if value else ''}"
+    return f"{msg}{f': {value}' if value else ''}"
 
 def create_validation_error(msg: str) -> Result[None, typer.BadParameter]:
     return Error(typer.BadParameter(msg))
