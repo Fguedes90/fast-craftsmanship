@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, Try, pipe, result
 from expression.collections import Map, Block
-from expression import try_
+from expression.core.try_ import try_
 from typing import NamedTuple
 from dataclasses import dataclass, field
 
