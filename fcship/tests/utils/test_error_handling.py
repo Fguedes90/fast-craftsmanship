@@ -66,7 +66,7 @@ def test_handle_command_errors_sync_display_message(monkeypatch):
     with pytest.raises(error_handling.typer.Exit):
         failing_function()
 
-    assert messages == [("Error: sync display error", "error")]
+    assert messages == [("Error: sync display error", "bold red")]
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,7 @@ async def test_handle_command_errors_async_display_message(monkeypatch):
     with pytest.raises(error_handling.typer.Exit):
         await failing_async_function()
 
-    assert messages == [("Error: async display error", "error")]
+    assert messages == [("Error: async display error", "bold red")]
 
 
 

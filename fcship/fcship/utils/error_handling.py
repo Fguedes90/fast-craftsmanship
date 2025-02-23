@@ -23,7 +23,7 @@ class CommandError(Exception):
     pass
 
 def _on_error(e: Exception) -> None:
-    display_message(f"Error: {e}", style="error")
+    display_message(f"Error: {e}", style="bold red")
     raise typer.Exit(1)
 
 def handle_command_errors(fn: Fn) -> Fn:
