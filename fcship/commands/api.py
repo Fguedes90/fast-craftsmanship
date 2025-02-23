@@ -1,8 +1,8 @@
 """API command implementation."""
 import typer
 from pathlib import Path
-from ..templates.api_templates import get_api_templates
-from ..utils import (
+from fcship.templates.api_templates import get_api_templates
+from fcship.utils import (
     handle_command_errors,
     validate_operation,
     success_message,

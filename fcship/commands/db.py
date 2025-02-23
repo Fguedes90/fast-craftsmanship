@@ -3,7 +3,7 @@ from typing import Optional
 import typer
 import subprocess
 from rich.panel import Panel
-from ..utils import (
+from fcship.utils import (
     handle_command_errors, 
     validate_operation, 
     success_message, 

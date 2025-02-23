@@ -1,8 +1,8 @@
 """Test command implementation."""
 import typer
 from pathlib import Path
-from ..templates.test_templates import get_test_template
-from ..utils import (
+from fcship.templates.test_templates import get_test_template
+from fcship.utils import (
     handle_command_errors,
     validate_operation,
     success_message,

@@ -1,8 +1,8 @@
 """Repository command implementation."""
 import typer
 from pathlib import Path
-from ..templates.repo_templates import get_repo_templates
-from ..utils import (
+from fcship.templates.repo_templates import get_repo_templates
+from fcship.utils import (
     handle_command_errors,
     validate_operation,
     success_message,

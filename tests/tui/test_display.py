@@ -25,6 +25,7 @@ from fcship.tui.display import (
 )
 from unittest.mock import patch
 from unittest.mock import Mock
+from hypothesis import effect
 
 # Test data
 VALID_MESSAGE = "Test message"
@@ -60,7 +61,8 @@ def test_validate_message_property(content):
         assert result.ok == message
     else:
         assert result.is_error()
-        assert "empty" in result.error.lower()
+        assert result.error.tag == "validation"
+        assert "empty" in result.error.validation.lower()
 
 @given(
     content=st.text(min_size=1).filter(lambda x: bool(x.strip())),
@@ -84,13 +86,14 @@ def test_display_message_properties(content, style, indent_level):
         max_size=10
     )
 )
+@effect.result[None, DisplayError]()
 def test_batch_messages_properties(messages):
     """Test that valid BatchMessages combinations work correctly."""
     batch = BatchMessages(messages=messages)
-    result = validate_batch_messages(batch)
+    result = yield from validate_batch_messages(batch)
     assert result.is_ok()
     assert isinstance(result.ok, BatchMessages)
-    assert len(result.ok.messages) == len(messages)
+    assert result.ok.messages == messages
 
 @given(
     content=st.text(min_size=1).filter(lambda x: bool(x.strip())),

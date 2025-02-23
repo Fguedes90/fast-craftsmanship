@@ -7,9 +7,9 @@ from expression import Result, Ok, Error
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .docs_downloader.orchestrator import run_scraper
-from .docs_downloader.exceptions import ProcessingException
-from ..utils import handle_command_errors, error_message
+from fcship.commands.docs_downloader.orchestrator import run_scraper
+from fcship.commands.docs_downloader.exceptions import ProcessingException
+from fcship.utils import handle_command_errors, error_message
 
 console = Console()
 

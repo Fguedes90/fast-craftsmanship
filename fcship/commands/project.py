@@ -2,14 +2,14 @@
 import typer
 from pathlib import Path
 from rich.panel import Panel
-from ..utils import (
+from fcship.utils import (
     handle_command_errors, 
     file_creation_status, 
     validate_operation, 
     success_message,
     console
 )
-from ..templates.project_templates import get_project_templates
+from fcship.templates.project_templates import get_project_templates
 
 @handle_command_errors
 def init_project(name: str) -> None:

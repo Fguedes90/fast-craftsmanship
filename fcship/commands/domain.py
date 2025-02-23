@@ -1,8 +1,8 @@
 """Domain command implementation."""
 import typer
 from pathlib import Path
-from ..templates.domain_templates import get_domain_templates
-from ..utils import (
+from fcship.templates.domain_templates import get_domain_templates
+from fcship.utils import (
     handle_command_errors,
     validate_operation,
     success_message,

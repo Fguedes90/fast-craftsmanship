@@ -1,8 +1,8 @@
 """Service command implementation."""
 import typer
 from pathlib import Path
-from ..templates.service_templates import get_service_templates
-from ..utils import (
+from fcship.templates.service_templates import get_service_templates
+from fcship.utils import (
     handle_command_errors,
     validate_operation,
     success_message,

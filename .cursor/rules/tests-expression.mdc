@@ -7,9 +7,7 @@ globs: test_*.py
 - activate virtual env
 - run with pytest
 - when creating or debuging one file ou test, run the specific file
-- the correct folder of the tests is ${workspace}/fcship/fcship/tests/...
-- the root of the projet is ${workspace}/fcship/fchip/
-ex: "cd fcschip && ./.venv/bin/activate && pytest tests/tui/test_panels.py -v -x"
+ex: "./.venv/bin/activate && pytest tests/tui/test_panels.py -v -x"
 
 # Testing Result Objects
 To test a Result(), use:
