@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, Try, pipe, result
 from expression.collections import Map, Block
-from expression.core import try_
+from expression import try_
 from typing import NamedTuple
 from dataclasses import dataclass, field
 
@@ -42,16 +42,15 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return Try(
-        ok = lambda: path.parent.mkdir(parents=True, exist_ok=True).map(lambda _: None),
-        error = lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent))
-    )
+    return try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
+           .map(lambda _: None)\
+           .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return Try(
-        ok= lambda: path.write_text(content).map(lambda _: None),
-        error= lambda e: FileError(f"Failed to write file: {path}", str(path)))
+    return try_(lambda: path.write_text(content))\
+           .map(lambda _: None)\
+           .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
 
 
 def create_single_file(tracker, path_content: FileContent) -> FileResult:
