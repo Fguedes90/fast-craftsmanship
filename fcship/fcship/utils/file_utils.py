@@ -55,21 +55,24 @@ def create_single_file(tracker: FileCreationTracker, path_content: FileContent) 
     )
 
 def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
-    path, content = file_info
-    return base / path, content
+    return (base / file_info[0], file_info[1])
 
 
 
 def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> Result[FileCreationTracker, FileError]:
     return files.fold(
-        lambda acc, item: acc.bind(lambda tr: create_single_file(tr, build_file_path(base, item))),
+        lambda acc, item: pipe(
+            acc,
+            result.bind(lambda tr: create_single_file(tr, build_file_path(base, item)))
+        ),
         Ok(tracker)
     )
 
 def create_files(files: Map[str, str], base_path: str = "") -> Result[FileCreationTracker, FileError]:
-    base = Path(base_path)
-    tracker = FileCreationTracker()
-    return process_all_files(base, files, tracker)
+    return pipe(
+        Ok(Path(base_path)),
+        result.bind(lambda base: process_all_files(base, files, FileCreationTracker()))
+    )
 
 def format_error_message(msg: str, value: str = "") -> str:
     return f"{msg}{(': ' + value) if value else ''}"
@@ -106,4 +109,8 @@ def validate_operation(
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
     """Pure: Find a file's status in the tracker."""
-    return tracker.files.filter(lambda fs: fs.path == path).map(lambda fs: fs.status)
+    return pipe(
+        tracker.files,
+        lambda files: files.filter(lambda fs: fs.path == path),
+        lambda filtered: filtered.map(lambda fs: fs.status)
+    )
