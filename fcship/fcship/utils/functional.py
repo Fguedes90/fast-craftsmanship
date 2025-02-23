@@ -38,7 +38,7 @@ def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence
         lambda acc, r: acc.bind(lambda xs: r.map(lambda x: xs + [x])),
         results,
         Ok([])
-    ).bind(lambda lst: Ok(Block.of_seq(lst)))
+    ).bind(lambda lst: Ok(Block.of_seq(lst, converter=lambda x: x)))
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
     """
@@ -83,11 +83,15 @@ def catch_errors(fn: Callable[P, A]) -> Callable[P, Result[A, Exception]]:
     """
     Wraps a function to catch any exceptions and return them as Result.Error.
     If the function succeeds, returns Result.Ok with the value.
+    If the function already returns a Result, it is returned unchanged.
     """
     @functools.wraps(fn)
     def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[A, Exception]:
         try:
-            return Ok(fn(*args, **kwargs))
+            result = fn(*args, **kwargs)
+            if isinstance(result, Result):
+                return result
+            return Ok(result)
         except Exception as e:
             return Error(e)
     return wrapped
