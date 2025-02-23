@@ -63,7 +63,7 @@ def test_handle_command_errors_sync_display_message(monkeypatch):
     def failing_function():
         raise ValueError("sync display error")
 
-    with pytest.raises(error_handling.typer.Exit):
+    with pytest.raises(Exit):
         failing_function()
 
     assert messages == [("Error: sync display error", "bold red")]
