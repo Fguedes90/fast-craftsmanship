@@ -5,7 +5,7 @@ from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
 from expression.collections import Map, Block
 from expression.core import try_
 from typing import NamedTuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 A = type("A")
 E = type("E")
@@ -29,7 +29,7 @@ class FileStatus(NamedTuple):
 
 @dataclass(frozen=True)
 class FileCreationTracker:
-    files: Block[FileStatus] = Block.empty()
+    files: Block[FileStatus] = field(default_factory=Block.empty)
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
