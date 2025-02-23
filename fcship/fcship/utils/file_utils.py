@@ -49,23 +49,15 @@ def handle_io_error(e: Exception, path: str) -> FileError:
     return FileError(str(e), path)
 
 def execute_io_operation(operation: Callable[[], None], path: str) -> Result[None, FileError]:
-    return pipe(
-        operation,
-        Ok,
-        match(
-            Ok, lambda _: Ok(None),
-            Error, lambda e: Error(handle_io_error(e, path))
-        )
+    return Ok(operation).match(
+        ok=lambda _: Ok(None),
+        error=lambda e: Error(handle_io_error(e, path))
     )
 
 def handle_io_operation(operation: Callable[[], None], path: str) -> Result[None, FileError]:
-    return pipe(
-        operation,
-        Ok,
-        match(
-            Ok, lambda _: Ok(None),
-            Error, lambda e: Error(FileError(str(e), path))
-        )
+    return Ok(operation).match(
+        ok=lambda _: Ok(None),
+        error=lambda e: Error(FileError(str(e), path))
     )
 
 def ensure_directory(path: Path) -> Result[None, FileError]:
@@ -139,12 +131,9 @@ def create_files(
     base_path: str = ""
 ) -> Result[FileCreationTracker, FileError]:
     base = Path(base_path)
-    return pipe(
-        init_file_creation_tracker(),
-        match(
-            Ok, lambda tracker: process_all_files(base, files, tracker),
-            Error, lambda e: Error(FileError(str(e), base_path))
-        )
+    return init_file_creation_tracker().match(
+        ok=lambda tracker: process_all_files(base, files, tracker),
+        error=lambda e: Error(FileError(str(e), base_path))
     )
 
 def format_error_message(msg: str, value: str = "") -> str:
