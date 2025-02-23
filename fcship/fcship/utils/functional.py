@@ -19,11 +19,7 @@ def lift_option(fn: Callable[P, Option[A]]) -> Callable[P, Result[A, Exception]]
     Se a função original retornar um Option com valor (Some), converte para Ok(valor).
     Caso contrário, retorna um Error com a mensagem "No value present".
     """
-    @functools.wraps(fn)
-    def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[A, Exception]:
-        opt: Option[A] = fn(*args, **kwargs)
-        return option_to_result(opt, "No value present")
-    return wrapped
+    return lambda *args, **kwargs: option_to_result(fn(*args, **kwargs), "No value present")
 
 async def collect_results(results: Sequence[Awaitable[Result[A, Exception]]]) -> Result[Sequence[A], Exception]:
     """Collect multiple async Results into a single Result containing all values.
@@ -37,8 +33,12 @@ async def collect_results(results: Sequence[Awaitable[Result[A, Exception]]]) ->
 def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence[A], Exception]:
     """Convert a sequence of Results into a Result of sequence.
     Short-circuits on first Error."""
-    values = Block.of_seq([result.ok for result in results if not result.is_error()])
-    return Ok(values)
+    from functools import reduce
+    return reduce(
+        lambda acc, r: acc.bind(lambda xs: r.map(lambda x: xs + [x])),
+        results,
+        Ok([])
+    ).bind(lambda lst: Ok(Block.of_seq(lst)))
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
     """
