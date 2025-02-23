@@ -9,13 +9,13 @@ from rich.panel import Panel
 from expression import Result, Ok, Error
 from expression.collections import Block
 
-from fcship.utils.ui import DisplayError
+from fcship.tui import DisplayError
 
 @pytest.fixture
 def mock_console(monkeypatch) -> Generator[MagicMock, None, None]:
     """Mock for rich console."""
     console_mock = MagicMock(spec=Console)
-    with patch('fcship.utils.ui.console', console_mock):
+    with patch('fcship.tui.display.console', console_mock):
         yield console_mock
 
 @pytest.fixture

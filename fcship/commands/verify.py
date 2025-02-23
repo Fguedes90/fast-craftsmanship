@@ -7,15 +7,15 @@ from expression.collections import Map, Block, seq
 from pydantic import BaseModel, Field, ConfigDict
 
 from fcship.utils.error_handling import handle_command_errors
-from fcship.utils.ui import (
-    create_summary_table,
+from fcship.tui import (
     error_message,
     success_message,
     display_rule,
     handle_ui_error,
     DisplayError,
     DisplayResult,
-    with_ui_context
+    with_ui_context,
+    create_summary_table
 )
 
 T = TypeVar('T')
@@ -144,6 +144,11 @@ def run_verification(name: str, cmd: Block[str]) -> Result[str, VerificationOutc
     """Runs a single verification check."""
     return (
         run_command(cmd)
+        .map_error(lambda e: 
+            VerificationOutcome.Failure(name, e.execution_error[1])
+            if e.tag == "execution_error"
+            else e
+        )
         .bind(lambda output: 
             Ok("✓ Passed") if output.returncode == 0
             else Error(VerificationOutcome.Failure(name, output.stderr or output.stdout))
@@ -155,30 +160,37 @@ def process_verification_results(
     console: Console
 ) -> Result[None, VerificationOutcome]:
     """Process verification results."""
-    def display_results() -> DisplayResult:
-        try:
-            # Create and print summary table
-            table = create_summary_table(results)
-            if table.is_error():
-                return table
+    class DisplayResultsOperation:
+        def setup(self) -> Result[None, DisplayError]:
+            return Ok(None)
             
-            return pipe(
-                display_rule("Verification Results", "cyan")
-                .bind(lambda _: Ok(console.print(table.ok)))
-                .bind(lambda _: 
-                    pipe(
-                        results.filter(lambda r: r[1].is_error()),
-                        seq.traverse(lambda f: 
-                            format_verification_output(f[1].error) if f[1].is_error()
-                            else Ok(None)
+        def operation(self) -> DisplayResult:
+            try:
+                # Create and print summary table
+                table = create_summary_table(results)
+                if table.is_error():
+                    return table
+                
+                return pipe(
+                    display_rule("Verification Results", "cyan")
+                    .bind(lambda _: Ok(console.print(table.ok)))
+                    .bind(lambda _: 
+                        pipe(
+                            results.filter(lambda r: r[1].is_error()),
+                            seq.traverse(lambda f: 
+                                format_verification_output(f[1].error) if f[1].is_error()
+                                else Ok(None)
+                            )
                         )
                     )
                 )
-            )
-        except Exception as e:
-            return Error(DisplayError.Rendering("Failed to display results", e))
+            except Exception as e:
+                return Error(DisplayError.Rendering("Failed to display results", e))
+                
+        def cleanup(self) -> Result[None, DisplayError]:
+            return Ok(None)
 
-    result = with_ui_context(display_results)
+    result = with_ui_context(DisplayResultsOperation())
     if result.is_error():
         return Error(VerificationOutcome.ExecutionError(
             "Verification",

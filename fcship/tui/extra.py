@@ -10,8 +10,14 @@ from dataclasses import dataclass
 # Use the console instance from the tui display module.
 from fcship.tui.display import console
 
+from .types import DisplayError, console
+
 T = TypeVar('T')
 E = TypeVar('E')
+
+# Type aliases
+UIOperation = Callable[[], Result[T, DisplayError]]
+AsyncUIOperation = Callable[[], Awaitable[Result[T, DisplayError]]]
 
 @dataclass(frozen=True)
 class UIOperation(Generic[T]):

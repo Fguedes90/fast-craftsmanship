@@ -1,3 +1,4 @@
+"""Display-related functions and utilities."""
 from ast import TypeAlias
 from collections.abc import Generator
 from expression import Ok, Error, Result, pipe, tagged_union, effect
@@ -7,6 +8,8 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, List, Literal, TypeVar, Generic, Protocol, Any, ForwardRef
 from enum import Enum
 from functools import reduce
+
+from .types import DisplayError, console, ConsoleProtocol
 
 T = TypeVar('T')
 
@@ -47,16 +50,22 @@ class BatchMessages:
 class DisplayContext:
     console: ConsoleProtocol
 
+# Type aliases
+DisplayResult: TypeAlias = Result[None, DisplayError]
+
+# Display styles
 class DisplayStyle(Enum):
+    """Available display styles."""
     SUCCESS = "green"
     ERROR = "red"
     WARNING = "yellow"
+    INFO = "blue"
     ERROR_DETAIL = "red dim"
+    RULE = "cyan"
 
 # Type aliases for improved readability
 MessagePair = Tuple[str, str]
 MessageList = List[MessagePair]
-DisplayResult = Result[None, DisplayError]
 MessageResult = Result[DisplayMessage, DisplayError]
 BatchResult = Result[BatchMessages, DisplayError]
 
