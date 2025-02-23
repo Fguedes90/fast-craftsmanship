@@ -1,14 +1,17 @@
 """Common test configurations and fixtures."""
-from collections.abc import Generator
+from collections.abc import Generator, Callable
 from typing import Any
 from unittest.mock import MagicMock, patch
 import pytest
+from hypothesis import strategies as st
 from rich.console import Console
 from rich.table import Table
-from expression import Result, Ok, Error, pipe
+from rich.panel import Panel
+from expression import Result, Ok, Error, pipe, Try
 from expression.collections import Block, seq
 
 from fcship.commands.verify import CommandOutput, VerificationOutcome
+from fcship.utils.ui import DisplayError, VALID_STYLES
 
 @pytest.fixture
 def mock_console() -> Generator[MagicMock, None, None]:
@@ -99,6 +102,138 @@ def mock_failed_command_output() -> CommandOutput:
         stderr="test error",
         returncode=1
     )
+
+############################################
+# UI Testing Utilities
+############################################
+
+@pytest.fixture
+def assert_display_error():
+    """Helper fixture to assert display error properties."""
+    def _assert(error: DisplayError, expected_tag: str, expected_message: str):
+        assert error.tag == expected_tag
+        match error:
+            case DisplayError(tag="validation", validation=msg):
+                assert msg == expected_message
+            case DisplayError(tag="rendering", rendering=(msg, _)):
+                assert msg == expected_message
+            case DisplayError(tag="interaction", interaction=(msg, _)):
+                assert msg == expected_message
+    return _assert
+
+@pytest.fixture
+def ui_test_strategies():
+    """Common UI test strategies."""
+    def display_error_strategy() -> st.SearchStrategy[DisplayError]:
+        """Generate valid display errors."""
+        return st.one_of(
+            st.builds(lambda m: DisplayError.Validation(m), st.text(min_size=1)),
+            st.builds(lambda m, e: DisplayError.Rendering(m, Exception(e)), st.text(min_size=1), st.text()),
+            st.builds(lambda m, e: DisplayError.Interaction(m, Exception(e)), st.text(min_size=1), st.text())
+        )
+
+    def table_row_strategy() -> st.SearchStrategy[tuple[str, Result[str, Any]]]:
+        """Generate valid table row data."""
+        return st.tuples(
+            st.text(min_size=1),
+            st.one_of(
+                st.builds(lambda x: Ok(x), st.text()),
+                st.builds(lambda x: Error(x), st.text())
+            )
+        )
+
+    def valid_style_strategy() -> st.SearchStrategy[str]:
+        """Generate valid style strings."""
+        return st.sampled_from(VALID_STYLES)
+
+    def invalid_style_strategy() -> st.SearchStrategy[str]:
+        """Generate invalid style strings."""
+        return st.text(min_size=1).filter(lambda x: x not in VALID_STYLES)
+
+    return {
+        'display_error': display_error_strategy,
+        'table_row': table_row_strategy,
+        'valid_style': valid_style_strategy,
+        'invalid_style': invalid_style_strategy
+    }
+
+@pytest.fixture
+def assert_validation_error():
+    """Helper fixture to assert validation error properties."""
+    def _assert(result: Result[Any, DisplayError], expected_message: str):
+        assert result.is_error()
+        assert isinstance(result.error, DisplayError)
+        assert result.error.tag == "validation"
+        assert result.error.validation == expected_message
+    return _assert
+
+@pytest.fixture
+def assert_rendering_error():
+    """Helper fixture to assert rendering error properties."""
+    def _assert(result: Result[Any, DisplayError], expected_message: str):
+        assert result.is_error()
+        assert isinstance(result.error, DisplayError)
+        assert result.error.tag == "rendering"
+        assert result.error.rendering[0] == expected_message
+    return _assert
+
+@pytest.fixture
+def ui_test_helpers():
+    """Common UI test helper functions."""
+    def verify_table_structure(table: Table, expected_columns: list[tuple[str, str | None]]):
+        """Verify table column structure."""
+        assert len(table.columns) == len(expected_columns)
+        for (col, (name, style)) in zip(table.columns, expected_columns):
+            assert col.header == name
+            if style:
+                assert col.style == style
+
+    def verify_panel_structure(panel: Panel, expected_title: str, expected_style: str):
+        """Verify panel structure."""
+        assert isinstance(panel, Panel)
+        assert panel.title == expected_title
+        assert panel.border_style == expected_style
+
+    return {
+        'verify_table_structure': verify_table_structure,
+        'verify_panel_structure': verify_panel_structure
+    }
+
+@pytest.fixture
+def mock_user_input(monkeypatch):
+    """Mock user input for testing."""
+    inputs = []
+    
+    def mock_input(prompt: str = ""):
+        if not inputs:
+            raise ValueError("No more inputs provided")
+        return inputs.pop(0)
+    
+    monkeypatch.setattr('builtins.input', mock_input)
+    
+    def provide_inputs(*values):
+        inputs.extend(values)
+        
+    return provide_inputs
+
+@pytest.fixture
+def mock_ui_operation():
+    """Create a mock UI operation for testing error handling."""
+    class MockUIOperation:
+        def __init__(self):
+            self.call_count = 0
+            self.should_succeed_after = 1
+            
+        def __call__(self) -> Result[str, DisplayError]:
+            self.call_count += 1
+            if self.call_count >= self.should_succeed_after:
+                return Ok("success")
+            return Error(DisplayError.Validation("Operation failed"))
+            
+        def set_success_after(self, attempts: int):
+            self.should_succeed_after = attempts
+            
+    return MockUIOperation()
 
 """Test utilities for functional testing."""
 

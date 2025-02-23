@@ -65,9 +65,11 @@ def validate_style(style: str) -> ValidationResult:
 
 def is_table_row(value: Any) -> TypeGuard[tuple[str, str]]:
     """Type guard for table row tuple."""
-    return (isinstance(value, tuple) 
-            and len(value) == 2 
-            and all(isinstance(x, str) for x in value))
+    if not isinstance(value, tuple):
+        return False
+    if len(value) != 2:
+        return False
+    return all(isinstance(x, str) for x in value)
 
 def validate_table_row(row: Any) -> TableRowResult:
     """Validate a table row."""
@@ -79,16 +81,12 @@ def validate_table_data(headers: list[str], rows: TableData) -> DisplayResult:
     """Validate table headers and rows."""
     if not headers:
         return Error(DisplayError.Validation("Headers list cannot be empty"))
-        
     if not all(isinstance(h, str) for h in headers):
         return Error(DisplayError.Validation("Headers must be strings"))
-        
     if any(len(row) != len(headers) for row in rows):
         return Error(DisplayError.Validation("All rows must have same length as headers"))
-        
     if not all(all(isinstance(cell, str) for cell in row) for row in rows):
         return Error(DisplayError.Validation("All cells must be strings"))
-        
     return Ok(None)
 
 def validate_panel_inputs(title: str, content: str, style: str) -> Result[tuple[str, str, str], DisplayError]:
@@ -127,14 +125,9 @@ def validate_input(value: str | None, name: str) -> ValidationResult:
 @effect.try_[None]()
 def display_message(message: str, style: str) -> None:
     """Display a message with given style using Expression's Try effect."""
-    validation = validate_input(message, "Message")
-    if validation.is_error():
-        raise ValueError(str(validation.error))
-
-    try:
-        console.print(Panel(message, style=style))
-    except Exception as e:
-        raise ValueError(f"Failed to display message: {e}") from e
+    if not message:
+        raise ValueError("Message cannot be empty")
+    console.print(f"[{style}]{message}[/{style}]")
 
 # Update function signatures to use DisplayResult
 def success_message(message: str) -> DisplayResult:
@@ -162,7 +155,6 @@ def add_row_to_table(table: Table, row: TableRow) -> TableResult:
     """Adds a row to the table in a functional way."""
     if not isinstance(table, Table):
         return Error(DisplayError.Validation("Invalid table object"))
-        
     try:
         table.add_row(*row)
         return Ok(table)
@@ -180,14 +172,13 @@ def create_summary_table[T](results: Block[tuple[str, Result[str, T]]]) -> Table
     """Creates a summary table of verification results."""
     if not isinstance(results, Block):
         return Error(DisplayError.Validation("Results must be a Block"))
-        
+    
     table = Table()
     table.add_column("Check", style="cyan")
     table.add_column("Status", style="bold")
     
     def add_row(acc: Result[Table, DisplayError], row: tuple[str, Result[str, T]]) -> TableResult:
-        return (acc.bind(lambda t: create_table_row(row)
-                        .bind(lambda r: add_row_to_table(t, r))))
+        return acc.bind(lambda t: create_table_row(row).bind(lambda r: add_row_to_table(t, r)))
     
     return pipe(
         results,
@@ -197,12 +188,12 @@ def create_summary_table[T](results: Block[tuple[str, Result[str, T]]]) -> Table
 def format_message(parts: list[str], separator: str = "\n\n") -> ValidationResult:
     """Format multiple message parts into a single message."""
     if not isinstance(parts, list):
-        return Error(DisplayError.Validation("Parts must be a list"))
+        return Error(DisplayError.Validation("Message parts must be a list"))
 
     if filtered_parts := list(filter(None, parts)):
         return Ok(separator.join(filtered_parts))
     else:
-        return Error(DisplayError.Validation("No valid message parts provided"))
+        return Error(DisplayError.Validation("At least one non-empty message part is required"))
 
 def display_table(headers: list[str], rows: TableData, title: str | None = None) -> DisplayResult:
     """Display a table using Rich for formatting."""
@@ -392,47 +383,32 @@ def with_retry[T](
     return result  # Return last error result
 
 def handle_ui_error(error: DisplayError) -> DisplayResult:
-    """Handle a UI error appropriately based on its type."""
+    """Handle UI errors in a consistent way."""
     match error:
         case DisplayError(tag="validation", validation=msg):
-            return error_message(f"Validation Error: {msg}")
+            return display_message(f"Validation Error: {msg}", "red")
             
         case DisplayError(tag="rendering", rendering=(msg, exc)):
-            return error_message(
-                "Display Error",
-                f"{msg}\nDetails: {str(exc)}"
-            )
+            return display_message(f"Display Error: {msg}\n{str(exc)}", "red")
             
         case DisplayError(tag="interaction", interaction=(msg, exc)):
-            return error_message(
-                "Input Error",
-                f"{msg}\nDetails: {str(exc)}"
-            )
+            return display_message(f"Input Error: {msg}\n{str(exc)}", "red")
             
         case _:
-            return error_message("Unknown Error", str(error))
+            return Error(DisplayError.Validation("Unknown error type"))
 
 def aggregate_errors(errors: Block[DisplayError]) -> DisplayError:
-    """Aggregate multiple display errors into a single error."""
-
-    def format_error(error: DisplayError) -> str:
+    """Combine multiple errors into a single validation error."""
+    error_messages = []
+    for error in errors:
         match error:
             case DisplayError(tag="validation", validation=msg):
-                return f"- Validation: {msg}"
-            case DisplayError(tag="rendering", rendering=(msg, exc)):
-                return f"- Display: {msg} ({exc})"
-            case DisplayError(tag="interaction", interaction=(msg, exc)):
-                return f"- Input: {msg} ({exc})"
-            case _:
-                return f"- Unknown: {error}"
-
-    formatted = pipe(
-        errors,
-        seq.map(format_error),
-        seq.to_list
-    )
-    
-    return DisplayError.Validation("\n".join(formatted))
+                error_messages.append(msg)
+            case DisplayError(tag="rendering", rendering=(msg, _)):
+                error_messages.append(msg)
+            case DisplayError(tag="interaction", interaction=(msg, _)):
+                error_messages.append(msg)
+    return DisplayError.Validation("\n".join(error_messages))
 
 def recover_ui[T](
     operation: Callable[[], Result[T, DisplayError]],
@@ -478,30 +454,26 @@ def with_ui_context[T](
     setup: DisplayFunction | None = None,
     cleanup: DisplayFunction | None = None
 ) -> Result[T, DisplayError]:
-    """Execute UI operation with setup and cleanup."""
-    # Run setup if provided
-    if setup:
-        setup_result = setup()
-        if setup_result.is_error():
-            return Error(setup_result.error)
-
+    """Run an operation with setup and cleanup."""
     try:
-        # Run main operation
+        if setup:
+            setup_result = setup()
+            if setup_result.is_error():
+                return Error(setup_result.error)
+                
         result = operation()
-
-        # Run cleanup if provided
+        
         if cleanup:
             cleanup_result = cleanup()
             if cleanup_result.is_error():
-                return Error(aggregate_errors(Block.of_seq([
-                    cleanup_result.error,
-                    result.error if result.is_error() else DisplayError.Validation("Operation succeeded but cleanup failed")
-                ])))
-
+                return Error(cleanup_result.error)
+                
         return result
-
-    except Exception as e:
-        if cleanup:
-            with contextlib.suppress(Exception):
-                cleanup()
+    except ValueError as e:
+        return Error(DisplayError.Validation(str(e)))
+    except IOError as e:
+        return Error(DisplayError.Rendering("IO operation failed", e))
+    except TypeError as e:
+        return Error(DisplayError.Validation(str(e)))
+    except RuntimeError as e:
         return Error(DisplayError.Rendering("Operation failed", e))

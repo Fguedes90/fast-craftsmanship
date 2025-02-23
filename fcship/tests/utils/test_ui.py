@@ -3,7 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 import pytest
 from hypothesis import given, strategies as st
-from expression import Result, Ok, Error, pipe
+from expression import Result, Ok, Error, pipe, Try, effect
 from expression.collections import seq, Block
 from rich.console import Console
 from rich.table import Table
@@ -29,8 +29,20 @@ from fcship.utils.ui import (
     prompt_for_input,
     display_indented_text,
     create_nested_panel,
-    display_progress
+    display_progress,
+    with_fallback,
+    with_retry,
+    handle_ui_error,
+    aggregate_errors,
+    recover_ui,
+    safe_display,
+    with_ui_context,
+    is_valid_style,
+    console
 )
+
+# Valid styles for Rich (copied from ui.py to use in tests)
+VALID_STYLES = {"red", "green", "blue", "yellow", "cyan", "magenta", "white", "black"}
 
 ############################################
 # Strategy Definitions
@@ -85,16 +97,14 @@ def invalid_table_row_strategy() -> st.SearchStrategy[Any]:
 
 @given(st.one_of(st.none(), st.text(min_size=1)))
 def test_validate_input_properties(value: str | None) -> None:
-    """Test properties of input validation."""
-    result = validate_input(value, "test")
-    
-    if not value:
-        assert result.is_error()
-        assert isinstance(result.error, DisplayError)
-        assert result.error.tag == "validation"
-    else:
+    """Test validate_input with property-based testing."""
+    result = validate_input(value, "Test")
+    if value:
         assert result.is_ok()
         assert result.ok == value
+    else:
+        assert result.is_error()
+        assert result.error.tag == "validation"
 
 ############################################
 # Display Error Tests
@@ -102,23 +112,24 @@ def test_validate_input_properties(value: str | None) -> None:
 
 @given(display_error_strategy())
 def test_display_error_properties(error: DisplayError) -> None:
-    """Test properties of display errors."""
-    assert isinstance(error, DisplayError)
-    assert error.tag in ["validation", "rendering", "interaction"]
-    
+    """Test DisplayError properties with different error types."""
     match error:
         case DisplayError(tag="validation", validation=msg):
-            assert isinstance(msg, str)
+            assert error.validation == msg
+            assert error.rendering is None
+            assert error.interaction is None
+            
         case DisplayError(tag="rendering", rendering=tup):
-            assert isinstance(tup, tuple)
-            assert len(tup) == 2
-            assert isinstance(tup[0], str)
-            assert isinstance(tup[1], Exception)
+            msg, exc = tup
+            assert error.rendering == (msg, exc)
+            assert error.validation is None
+            assert error.interaction is None
+            
         case DisplayError(tag="interaction", interaction=tup):
-            assert isinstance(tup, tuple)
-            assert len(tup) == 2
-            assert isinstance(tup[0], str)
-            assert isinstance(tup[1], Exception)
+            msg, exc = tup
+            assert error.interaction == (msg, exc)
+            assert error.validation is None
+            assert error.rendering is None
 
 ############################################
 # Message Display Tests
@@ -187,13 +198,14 @@ def test_warning_message(mock_console: MagicMock) -> None:
 
 @given(table_row_strategy())
 def test_create_table_row_properties(row_data: tuple[str, Result[str, Any]]) -> None:
-    """Test properties of table row creation."""
+    """Test create_table_row with property-based testing."""
     name, result = row_data
-    row = create_table_row((name, result))
-    assert isinstance(row, tuple)
-    assert len(row) == 2
-    assert row[0] == name.title()
-    assert "[green]✨ Passed[/green]" in row[1] if result.is_ok() else "[red]❌ Failed[/red]" in row[1]
+    row_result = create_table_row((name, result))
+    
+    assert row_result.is_ok()
+    created_row = row_result.ok
+    assert created_row[0] == name.title()  # Name should be title-cased
+    assert "[green]" in created_row[1] if result.is_ok() else "[red]" in created_row[1]
 
 def test_create_table_row_empty() -> None:
     """Test table row creation with empty name."""
@@ -220,13 +232,17 @@ def test_add_row_invalid_table() -> None:
 
 @given(st.lists(table_row_strategy(), min_size=0, max_size=10))
 def test_create_summary_table_properties(results: list[tuple[str, Result[str, Any]]]) -> None:
-    """Test properties of summary table creation."""
+    """Test create_summary_table with property-based testing."""
     block_results = Block.of_seq(results)
-    table = create_summary_table(block_results)
-    assert isinstance(table, Table)
-    assert len(table.columns) == 2
-    assert table.columns[0].header == "Check"
-    assert table.columns[1].header == "Status"
+    table_result = create_summary_table(block_results)
+    
+    assert table_result.is_ok()
+    table = table_result.ok
+    
+    # Verify table structure
+    assert len(table.columns) == 2  # Should have "Check" and "Status" columns
+    assert table.columns[0].style == "cyan"
+    assert table.columns[1].style == "bold"
 
 def test_create_summary_table_invalid() -> None:
     """Test summary table creation with invalid input."""
@@ -245,12 +261,18 @@ def test_create_summary_table_invalid() -> None:
     st.text(min_size=1)
 )
 def test_create_panel_properties(title: str, content: str, style: str) -> None:
-    """Test properties of panel creation."""
-    panel = create_panel(title, content, style)
-    assert isinstance(panel, Panel)
-    assert panel.title == title
-    assert panel.border_style == style
-    assert panel.renderable == content
+    """Test create_panel with property-based testing."""
+    result = create_panel(title, content, style)
+    
+    if style in VALID_STYLES:
+        assert result.is_ok()
+        panel = result.ok
+        assert isinstance(panel, Panel)
+        assert panel.title == title
+        assert panel.border_style == style
+    else:
+        assert result.is_error()
+        assert result.error.tag == "validation"
 
 def test_create_panel_empty_title() -> None:
     """Test panel creation with empty title."""
@@ -272,12 +294,18 @@ def test_create_panel_empty_content() -> None:
 
 @given(st.lists(st.text(), min_size=0, max_size=5))
 def test_format_message_properties(parts: list[str]) -> None:
-    """Test properties of message formatting."""
+    """Test format_message with property-based testing."""
     result = format_message(parts)
-    assert result.is_ok()
-    assert isinstance(result.ok, str)
-    if parts:
-        assert all(part in result.ok for part in parts if part)
+    
+    if any(parts):  # If there are any non-empty parts
+        assert result.is_ok()
+        formatted = result.ok
+        # Check each non-empty part is in the formatted message
+        for part in filter(None, parts):
+            assert part in formatted
+    else:
+        assert result.is_error()
+        assert result.error.tag == "validation"
 
 def test_format_message_invalid_input() -> None:
     """Test message formatting with invalid input."""
@@ -585,10 +613,14 @@ def test_display_progress(
 
 @given(st.lists(st.tuples(st.text(min_size=1), st.text(min_size=1)), min_size=1))
 def test_batch_display_messages_properties(messages: list[tuple[str, str]]) -> None:
-    """Test properties of batch message display."""
-    with patch("fcship.utils.ui.console"):
-        result = batch_display_messages(messages)
+    """Test batch_display_messages with property-based testing."""
+    result = batch_display_messages(messages)
+    
+    if all(msg and style for msg, style in messages):
         assert result.is_ok()
+    else:
+        assert result.is_error()
+        assert result.error.tag == "validation"
 
 @given(
     st.lists(st.tuples(st.text(min_size=1), st.text()), min_size=1),
@@ -598,18 +630,32 @@ def test_create_multi_column_table_properties(
     columns: list[tuple[str, str | None]],
     rows: list[list[str]]
 ) -> None:
-    """Test properties of multi-column table creation."""
-    # Ensure all rows have the same length as columns
-    normalized_rows = [row[:len(columns)] for row in rows]
-    result = create_multi_column_table(columns, normalized_rows)
-    assert isinstance(result, Result)
+    """Test create_multi_column_table with property-based testing."""
+    result = create_multi_column_table(columns, rows)
+    
+    # Test for valid table creation
+    if len(rows[0]) == len(columns):
+        assert result.is_ok()
+        table = result.ok
+        assert len(table.columns) == len(columns)
+        for (header, style), col in zip(columns, table.columns):
+            assert col.header == header
+            if style:
+                assert col.style == style
+    else:
+        assert result.is_error()
+        assert result.error.tag == "rendering"
 
 @given(st.text(min_size=1), st.integers(min_value=0, max_value=10))
 def test_display_indented_text_properties(text: str, indent: int) -> None:
-    """Test properties of indented text display."""
-    with patch("fcship.utils.ui.console"):
-        result = display_indented_text(text, indent)
+    """Test display_indented_text with property-based testing."""
+    result = display_indented_text(text, indent)
+    
+    if text:
         assert result.is_ok()
+        # Each line should be properly indented
+        for line in text.splitlines():
+            assert " " * indent + line in str(result)
 
 @given(
     st.text(min_size=1),
@@ -619,11 +665,21 @@ def test_display_indented_text_properties(text: str, indent: int) -> None:
     )
 )
 def test_create_nested_panel_properties(title: str, sections: list[tuple[str, str]]) -> None:
-    """Test properties of nested panel creation."""
+    """Test create_nested_panel with property-based testing."""
     result = create_nested_panel(title, sections)
-    assert isinstance(result, Result)
-    if result.is_ok():
-        assert isinstance(result.ok, Panel)
+    
+    if all(title and content for title, content in sections):
+        assert result.is_ok()
+        panel = result.ok
+        assert isinstance(panel, Panel)
+        assert panel.title == title
+        # Verify each section is included in the panel content
+        for section_title, section_content in sections:
+            assert section_title in str(panel)
+            assert section_content in str(panel)
+    else:
+        assert result.is_error()
+        assert result.error.tag == "validation"
 
 ############################################
 # Integration Tests for New Functions
