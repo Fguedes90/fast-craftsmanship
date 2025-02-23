@@ -35,11 +35,11 @@ class FileCreationTracker:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
 
-@try_[FileError]()
+@try_(FileError)
 def ensure_directory(path: Path) -> FileResult[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
 
-@try_[FileError]()
+@try_(FileError)
 def write_file(path: Path, content: str) -> FileResult[None]:
     path.write_text(content)
 
