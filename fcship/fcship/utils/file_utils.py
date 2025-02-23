@@ -42,17 +42,21 @@ class FileOperation:
 
 
 def ensure_directory(path: Path) -> FileResult:
-    return Try(
-        path.parent.mkdir(parents=True, exist_ok=True), 
-        FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
+    return try_(lambda: path.parent.mkdir(parents=True, exist_ok=True))\
+           .map(lambda _: None)\
+           .map_error(lambda e: FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
 def write_file(path: Path, content: str) -> FileResult:
-    return Try(path.write_text(content), FileError(f"Failed to write file: {path}", str(path)))
+    return try_(lambda: path.write_text(content))\
+           .map(lambda _: None)\
+           .map_error(lambda e: FileError(f"Failed to write file: {path}", str(path)))
 
 
 def create_single_file(tracker, path_content: FileContent) -> FileResult:
     rel_path, content = path_content
+    if not isinstance(rel_path, Path):
+        rel_path = Path(rel_path)
     if isinstance(tracker, Path):
         file_path = tracker / rel_path if not rel_path.is_absolute() else rel_path
         return pipe(
@@ -124,3 +128,6 @@ def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]
         lambda files: files.filter(lambda fs: fs.path == path),
         lambda filtered: filtered.map(lambda fs: fs.status)
     )
+
+def init_file_creation_tracker() -> Result[FileCreationTracker, FileError]:
+    return Ok(FileCreationTracker())
