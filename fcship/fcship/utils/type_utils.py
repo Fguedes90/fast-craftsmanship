@@ -6,7 +6,6 @@ from typing import TypeVar, Any
 
 T = TypeVar('T')
 
-@effect.try_[T]()
 def ensure_type(
     value: Any,
     type_constructor: Callable[[Any], T],
@@ -48,10 +47,7 @@ def map_type(
         Uma função que, dado um valor do tipo T, retorna um Result[T, Exception].
     """
     def mapper(x: T) -> Result[T, Exception]:
-        return pipe(
-            f(str(x)),
-            Try.map(type_constructor)
-        )
+        return f(str(x)).map(type_constructor)
     return mapper
 
 def validate_operation(
