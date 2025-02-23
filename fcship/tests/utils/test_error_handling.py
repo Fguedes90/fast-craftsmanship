@@ -106,8 +106,8 @@ async def test_handle_command_errors_async_display_message(monkeypatch):
     @error_handling.handle_command_errors
     async def failing_async_function():
         raise ValueError("async display error")
-
-    with pytest.raises(error_handling.typer.Exit):
+    
+    with pytest.raises(Exit):
         await failing_async_function()
 
     assert messages == [("Error: async display error", "bold red")]
@@ -120,7 +120,7 @@ def test__on_error_calls_display_message(monkeypatch):
     def fake_display_message(message: str, style: str) -> None:
         messages.append((message, style))
     monkeypatch.setattr(error_handling, "display_message", fake_display_message)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(Exit):
         error_handling._on_error(ValueError("direct test error"))
     assert messages == [("Error: direct test error", "bold red")]
 
@@ -133,7 +133,7 @@ def test__on_error_uses_wrapped_display_message(monkeypatch):
         messages.append((message, style))
     fake_display_message.__wrapped__ = fake_display_message
     monkeypatch.setattr(error_handling, "display_message", fake_display_message)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(Exit):
         error_handling._on_error(ValueError("wrapped error"))
     assert messages == [("Error: wrapped error", "bold red")]
 
