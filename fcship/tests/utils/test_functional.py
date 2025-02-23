@@ -6,7 +6,9 @@ from fcship.utils.functional import (
     sequence_results,
     tap,
     tap_async,
-    lift_option
+    lift_option,
+    collect_results,
+    option_to_result
 )
 
 def test_catch_errors_with_success():
@@ -87,3 +89,42 @@ def test_lift_option_with_nothing():
     result = lifted(-1)
     assert result.is_error()
     assert isinstance(result.error, Exception)
+
+@pytest.mark.asyncio
+async def test_collect_results_all_success():
+    """Test collect_results with all successful async results."""
+    async def async_ok(x: int):
+        return Ok(x)
+    
+    results = [async_ok(1), async_ok(2), async_ok(3)]
+    combined = await collect_results(results)
+    assert combined.is_ok()
+    # Block.of_seq converts the list to a Block, so compare as list
+    assert list(combined.ok) == [1, 2, 3]
+
+@pytest.mark.asyncio
+async def test_collect_results_with_failure():
+    """Test collect_results when one of the async results fails."""
+    async def async_ok(x: int):
+        return Ok(x)
+    async def async_error(x: int):
+        return Error(ValueError("failure"))
+    
+    results = [async_ok(1), async_error(2), async_ok(3)]
+    combined = await collect_results(results)
+    assert combined.is_error()
+    assert isinstance(combined.error, ValueError)
+
+def test_option_to_result_with_some():
+    """Test option_to_result returns Ok when Option is Some."""
+    from expression import Some
+    result = option_to_result(Some(100), "No value present")
+    assert result.is_ok()
+    assert result.ok == 100
+
+def test_option_to_result_with_nothing():
+    """Test option_to_result returns Error when Option is Nothing."""
+    from expression import Nothing
+    result = option_to_result(Nothing, "No value present")
+    assert result.is_error()
+    assert isinstance(result.error, ValueError)
