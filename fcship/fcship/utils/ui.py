@@ -164,6 +164,12 @@ def add_row_to_table(table: Table, row: TableRow) -> TableResult:
     except Exception as e:
         return Error(DisplayError.Rendering("Failed to add row to table", e))
 
+def _try_create_panel(content: str, title: str, style: str) -> PanelResult:
+    try:
+        return Ok(Panel(content, title=title, border_style=style))
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to create panel", e))
+
 def create_panel(title: str, content: str, style: str) -> PanelResult:
     """Cria um painel com os parâmetros fornecidos."""
     return pipeline(
@@ -350,8 +356,8 @@ async def safe_display[T](display_fn: Callable[..., Awaitable[Result[T, DisplayE
         return Error(DisplayError.Rendering(f"Failed to execute {display_fn.__name__}", e))
 
 @contextmanager
-def with_ui_context() -> Generator[None, None, None]:
-    """Context manager for UI setup and cleanup."""
+def ui_context_manager() -> Generator[None, None, None]:
+    """Context manager para configuração e limpeza da UI."""
     try:
         console.clear()
         yield
@@ -360,11 +366,10 @@ def with_ui_context() -> Generator[None, None, None]:
     finally:
         console.clear()
 
-def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
-    """Handle UI errors in a functional way."""
+async def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
+    """Trata erros da UI de forma funcional."""
     return pipe(
-        error,
-        lambda e: error_message(str(e), str(e.details) if hasattr(e, 'details') else None),
+        await error_message(str(error), str(error.details) if hasattr(error, 'details') else None),
         lambda _: Error(error)
     )
 
