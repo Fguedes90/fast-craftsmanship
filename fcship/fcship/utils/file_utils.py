@@ -10,14 +10,14 @@ from dataclasses import dataclass, field
 A = type("A")
 E = type("E")
 T = type("T")
-ValidationResult = Result[None, typer.BadParameter]
+ValidationResult = Result
 FileContent = tuple[Path, str]
 RawFileContent = tuple[str, str]
 @dataclass(frozen=True)
 class FileError:
     message: str
     path: str
-FileResult = Result[T, FileError]
+FileResult = Result
 
 
 
@@ -36,17 +36,17 @@ class FileCreationTracker:
 
 
 
-def ensure_directory(path: Path) -> FileResult[None]:
+def ensure_directory(path: Path) -> FileResult:
     return Try(
         path.parent.mkdir(parents=True, exist_ok=True), 
         FileError(f"Failed to create directory: {path.parent}", str(path.parent)))
 
 
-def write_file(path: Path, content: str) -> FileResult[None]:
+def write_file(path: Path, content: str) -> FileResult:
     return Try(path.write_text(content), FileError(f"Failed to write file: {path}", str(path)))
 
 
-def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> FileResult[FileCreationTracker]:
+def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> FileResult:
     path, content = path_content
 
     return pipe(
@@ -60,7 +60,7 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 
 
-def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult[FileCreationTracker]:
+def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult:
     return files.fold(
         lambda acc, item: pipe(
             acc,
@@ -69,7 +69,7 @@ def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCre
         Ok(tracker)
     )
 
-def create_files(files: Map[str, str], base_path: str = "") -> FileResult[FileCreationTracker]:
+def create_files(files: Map[str, str], base_path: str = "") -> FileResult:
     return pipe(
         Ok(Path(base_path)),
         result.bind(lambda base: process_all_files(base, files, FileCreationTracker()))
