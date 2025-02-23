@@ -47,6 +47,27 @@ def test_handle_command_errors_sync_failure():
     with pytest.raises(Exit):
         failing_function()
 
+def test_handle_command_errors_sync_display_message(monkeypatch):
+    """
+    Garante que, na versão síncrona, quando ocorre um erro,
+    _on_error chame display_message com a mensagem de erro correta.
+    """
+    messages = []
+
+    def fake_display_message(message: str, style: str) -> None:
+        messages.append((message, style))
+
+    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+
+    @error_handling.handle_command_errors
+    def failing_function():
+        raise ValueError("sync display error")
+
+    with pytest.raises(error_handling.typer.Exit):
+        failing_function()
+
+    assert messages == [("Error: sync display error", "error")]
+
 
 @pytest.mark.asyncio
 async def test_handle_command_errors_async_success():
@@ -68,6 +89,28 @@ async def test_handle_command_errors_async_failure():
 
     with pytest.raises(Exit):
         await failing_async_function()
+
+@pytest.mark.asyncio
+async def test_handle_command_errors_async_display_message(monkeypatch):
+    """
+    Garante que, na versão assíncrona, quando ocorre um erro,
+    _on_error chame display_message com a mensagem de erro correta.
+    """
+    messages = []
+
+    def fake_display_message(message: str, style: str) -> None:
+        messages.append((message, style))
+
+    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+
+    @error_handling.handle_command_errors
+    async def failing_async_function():
+        raise ValueError("async display error")
+
+    with pytest.raises(error_handling.typer.Exit):
+        await failing_async_function()
+
+    assert messages == [("Error: async display error", "error")]
 
 
 
