@@ -38,7 +38,7 @@ def sequence_results(results: Sequence[Result[A, Exception]]) -> Result[Sequence
         lambda acc, r: acc.bind(lambda xs: r.map(lambda x: xs + [x])),
         results,
         Ok([])
-    ).bind(lambda lst: Ok(Block.of_seq(lst, converter=lambda x: x)))
+    ).bind(lambda lst: Ok(Block.of_seq(lst)))
 
 def tap(fn: Callable[[A], Any]) -> Callable[[A], A]:
     """
