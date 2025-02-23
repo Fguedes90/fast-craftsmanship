@@ -16,19 +16,22 @@ def validate_operation(
     requires_name: list[str] | None = None
 ) -> Result[str, Exception]:
     """Validate command operation and arguments using Expression's Try effect."""
-    valid_ops = ", ".join(valid_operations)
+    valid_ops_message = ", ".join(valid_operations)
+    
+    def check_operation(op: str) -> Result[str, Exception]:
+        return Ok(op) if op in valid_operations else Error(
+            typer.BadParameter(f"Invalid operation: {op}. Valid operations: {valid_ops_message}")
+        )
+    
+    def check_name_requirement(op: str) -> Result[str, Exception]:
+        return Error(
+            typer.BadParameter(f"Operation '{op}' requires a name parameter")
+        ) if requires_name and op in requires_name and not name else Ok(op)
+    
     return pipe(
         Ok(operation),
-        lambda res: res.bind(lambda op: 
-            Ok(op) if op in valid_operations else Error(
-                typer.BadParameter(f"Invalid operation: {op}. Valid operations: {valid_ops}")
-            )
-        ),
-        lambda res: res.bind(lambda op:
-            Ok(op) if not (requires_name and op in requires_name and not name) else Error(
-                typer.BadParameter(f"Operation '{op}' requires a name parameter")
-            )
-        )
+        lambda res: res.bind(check_operation),
+        lambda res: res.bind(check_name_requirement)
     )
 
 def validate(validator: Callable[[T], bool], error_msg: str) -> Callable[[T], Result[T, Exception]]:
