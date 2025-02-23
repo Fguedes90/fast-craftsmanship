@@ -109,19 +109,21 @@ def print_styled(ctx: DisplayContext, message: DisplayMessage) -> DisplayResult:
             else f"{indent}{message.content}"
         )
     
-    return pipe(
-        Ok(format_message()),
-        lambda msg: Ok(ctx.console.print(msg)),
-        lambda _: Ok(None)
-    ).map_error(lambda e: DisplayError.Rendering("Failed to print styled message", e))
+    try:
+        formatted = format_message()
+        ctx.console.print(formatted)
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to print styled message", e))
 
 def print_rule(ctx: DisplayContext, message: str, style: Optional[str] = None) -> DisplayResult:
     """Pure function to print a rule to console"""
-    return pipe(
-        Ok(Rule(message, style=style)),
-        lambda rule: Ok(ctx.console.print(rule)),
-        lambda _: Ok(None)
-    ).map_error(lambda e: DisplayError.Rendering("Failed to print rule", e))
+    try:
+        rule = Rule(message, style=style)
+        ctx.console.print(rule)
+        return Ok(None)
+    except Exception as e:
+        return Error(DisplayError.Rendering("Failed to print rule", e))
 
 # Create display context
 display_ctx = DisplayContext(console=Console())
@@ -177,9 +179,12 @@ def create_display_message(msg_pair: MessagePair) -> DisplayMessage:
 def process_messages(ctx: DisplayContext, batch: BatchMessages) -> Generator[Any, None, Result[None, DisplayError]]:
     """Process messages with effect system"""
     validated_batch = yield from validate_batch_messages(batch)
+    if validated_batch.is_error():
+        return validated_batch
     
-    for msg_pair in validated_batch.messages:
-        yield from display_message(ctx, create_display_message(msg_pair))
+    for msg_pair in validated_batch.ok.messages:
+        message = create_display_message(msg_pair)
+        yield from display_message(ctx, message)
     
     return Ok(None)
 

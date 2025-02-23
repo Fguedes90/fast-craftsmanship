@@ -4,6 +4,8 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar, Any, overload
 import asyncio
 import typer
+from fcship.tui import error_message, DisplayContext
+from fcship.tui.display import console
 
 T = TypeVar('T')
 SyncFn = Callable[..., T]
@@ -16,8 +18,6 @@ def handle_command_errors(fn: SyncFn) -> SyncFn: ...
 @overload
 def handle_command_errors(fn: AsyncFn) -> AsyncFn: ...
 
-from fcship.tui import error_message
-
 class CommandError(Exception):
     """Erro específico para falhas em comandos."""
     pass
@@ -27,7 +27,8 @@ def _on_error(e: Exception) -> None:
         disp = error_message.__wrapped__
     except AttributeError:
         disp = error_message
-    disp(str(e))
+    ctx = DisplayContext(console=console)
+    disp(ctx, str(e))
     raise typer.Exit(1)
 
 def handle_command_errors(fn: Fn) -> Fn:

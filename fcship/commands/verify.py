@@ -15,7 +15,8 @@ from fcship.tui import (
     DisplayError,
     DisplayResult,
     with_ui_context,
-    create_summary_table
+    create_summary_table,
+    DisplayContext
 )
 
 T = TypeVar('T')
@@ -79,22 +80,23 @@ VERIFICATIONS = Map.of_seq([
     ("format", Block.of_seq(["black", "--check", "."]))
 ])
 
-def format_verification_output(outcome: VerificationOutcome) -> DisplayResult:
+def format_verification_output(outcome: VerificationOutcome, ctx: DisplayContext) -> DisplayResult:
     """Formats and displays verification outcome."""
     match outcome:
         case VerificationOutcome(tag="success"):
-            return success_message(outcome.success or "")
+            return success_message(ctx, outcome.success or "")
         case VerificationOutcome(tag="failure"):
-            return error_message(f"{outcome.failure[0]} Failed", outcome.failure[1])
+            return error_message(ctx, f"{outcome.failure[0]} Failed", outcome.failure[1])
         case VerificationOutcome(tag="validation_error"):
-            return error_message("Validation Error", outcome.validation_error or "")
+            return error_message(ctx, "Validation Error", outcome.validation_error or "")
         case VerificationOutcome(tag="execution_error"):
             return error_message(
+                ctx,
                 "Execution Error",
                 f"Command: {outcome.execution_error[0]}\n\n{outcome.execution_error[1]}"
             )
         case _:
-            return error_message("Unknown Error", "An unknown error occurred")
+            return error_message(ctx, "Unknown Error", "An unknown error occurred")
 
 def validate_check_type(check_type: str) -> Result[str, VerificationOutcome]:
     """Validates the check type parameter."""
@@ -178,7 +180,7 @@ def process_verification_results(
                         pipe(
                             results.filter(lambda r: r[1].is_error()),
                             seq.traverse(lambda f: 
-                                format_verification_output(f[1].error) if f[1].is_error()
+                                format_verification_output(f[1].error, DisplayContext(console=console)) if f[1].is_error()
                                 else Ok(None)
                             )
                         )
@@ -210,6 +212,7 @@ def process_verification_results(
 async def verify(check_type: str = "all", console: Console | None = None) -> None:
     """Run verification checks."""
     ui_console = console or Console()
+    ctx = DisplayContext(console=ui_console)
     
     result = (
         validate_check_type(check_type)
@@ -227,10 +230,10 @@ async def verify(check_type: str = "all", console: Console | None = None) -> Non
     )
     
     if result.is_error():
-        error_result = format_verification_output(result.error)
+        error_result = format_verification_output(result.error, ctx)
         if error_result.is_error():
             await handle_ui_error(error_result.error)
     else:
-        success_result = success_message("✨ All verifications passed successfully!")
+        success_result = success_message(ctx, "✨ All verifications passed successfully!")
         if success_result.is_error():
             await handle_ui_error(success_result.error)

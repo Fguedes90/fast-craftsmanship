@@ -7,6 +7,7 @@ from .types import (
 
 from .display import (
     DisplayResult,
+    DisplayContext,
     display_message,
     success_message,
     error_message,
@@ -67,6 +68,7 @@ __all__ = [
     # Types and core components
     "DisplayError",
     "DisplayResult",
+    "DisplayContext",
     "ConsoleProtocol",
     "console",
     
