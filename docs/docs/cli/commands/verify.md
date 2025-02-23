@@ -2,109 +2,116 @@
 
 ## Verify Command
 
-The verify command provides functionality to run various code quality checks and tests on your codebase. It uses railway-oriented programming with functional effects to handle failures gracefully and provide clear error messages.
+The verify command provides functionality to run various code quality checks on your codebase. It uses functional programming principles with railway-oriented programming to handle failures gracefully and provide clear error messages.
 
 ### Usage
 
 ```bash
-fcship verify
+fcship verify [check_type]
 ```
+
+### Arguments
+
+- `check_type` (optional): Type of verification to run. Defaults to "all".
+  - Valid values: "all", "type", "lint", "test", "format"
 
 ### Verification Types
 
-The following verifications are run:
+The following verifications are available:
 
-- **Style**: Checks code formatting using black and linting with flake8
-- **Types**: Verifies type annotations using mypy
-- **Tests**: Runs pytest test suite
+- **Type Check**: Verifies type annotations using `mypy`
+- **Lint**: Runs code linting using `flake8`
+- **Test**: Executes test suite using `pytest`
+- **Format**: Checks code formatting using `black`
 
-### Error Handling
+### Implementation Details
 
-The verify command uses railway-oriented programming to handle errors gracefully:
+The verify command is implemented using functional programming principles:
 
-- Each verification is run independently
-- Failures are captured and reported without stopping other checks
-- Clear error messages show which check failed and why
-- Command execution errors are handled separately from check failures
+- **Railway-oriented programming** with `Result` types for error handling
+- **Pure functions** with explicit error types
+- **Immutable data structures** using `Block` and `Map`
+- **Tagged unions** for type-safe error handling
+
+### Key Types
+
+```python
+class CommandOutput:
+    stdout: str      # Standard output
+    stderr: str      # Standard error
+    returncode: int  # Return code
+
+class VerificationOutcome:
+    tag: Literal["success", "failure", "validation_error", "execution_error"]
+    success: str | None
+    failure: tuple[str, str] | None
+    validation_error: str | None
+    execution_error: tuple[str, str] | None
+```
+
+### Workflow
+
+1. Validates the check type
+2. Determines which verifications to run
+3. Executes each verification independently
+4. Collects and processes results
+5. Displays summary table and detailed failures
+6. Returns overall success/failure
 
 ### Example Output
 
 ```
-Running verifications...
+┌─────────────────────────────────┐
+│     Verification Results        │
+├───────────────┬────────────────┤
+│ Type Check    │ ✨ Passed      │
+│ Lint          │ ✨ Passed      │
+│ Test          │ ✨ Passed      │
+│ Format        │ ✨ Passed      │
+└───────────────┴────────────────┘
 
-Style Check
-✨ Passed
+✨ All verifications passed successfully!
+```
 
-Type Check
-❌ Failed
+Or with failures:
+
+```
+┌─────────────────────────────────┐
+│     Verification Results        │
+├───────────────┬────────────────┤
+│ Type Check    │ ❌ Failed      │
+│ Lint          │ ✨ Passed      │
+│ Test          │ ✨ Passed      │
+│ Format        │ ✨ Passed      │
+└───────────────┴────────────────┘
+
+Type Check Failed
 mypy found type errors:
 main.py:10: error: Incompatible return value type
-
-Test Run
-✨ Passed
-
-Summary:
-Check       Status
-Style       [green]✨ Passed[/green]
-Types       [red]❌ Failed[/red]
-Tests       [green]✨ Passed[/green]
 ```
 
-### Implementation Details
+### Error Handling
 
-The verify command is implemented using:
+The command uses a sophisticated error handling system with distinct error types:
 
-- **Railway-oriented programming** for error handling
-- **Pure functions** for predictable behavior 
-- **Effect system** for handling side effects
-- **Immutable data structures** for thread safety
+- **ValidationError**: Input validation failures
+- **ExecutionError**: Command execution failures
+- **Failure**: Verification check failures
+- **DisplayError**: UI rendering failures
 
-Key types:
+Each error type is handled appropriately with clear error messages and proper error propagation.
+
+### Customization
+
+The verifications are configured using a `Map` of commands:
 
 ```python
-# Command execution result
-class CommandOutput:
-    stdout: str  # Standard output
-    stderr: str  # Standard error
-    returncode: int  # Return code
-    
-# Verification result
-class VerificationOutcome:
-    name: str  # Name of check
-    message: str  # Success/failure message
+VERIFICATIONS = Map.of_seq([
+    ("type", Block.of_seq(["mypy", "."])),
+    ("lint", Block.of_seq(["flake8"])),
+    ("test", Block.of_seq(["pytest"])),
+    ("format", Block.of_seq(["black", "--check", "."]))
+])
 ```
 
-Example workflow:
-
-```python
-from expression import Ok, Error, pipe
-from fcship.commands.verify import verify_all
-
-# Run all verifications
-result = verify_all()
-
-match result:
-    case Ok(verifications):
-        # Process successful verifications
-        for name, check_result in verifications:
-            display_result(name, check_result)
-            
-    case Error(error):
-        # Handle verification failure
-        display_error(error)
-```
-
-### Adding New Verifications
-
-New verifications can be added by updating the `VERIFICATIONS` registry:
-
-```python
-VERIFICATIONS = {
-    "Style": ["black --check .", "flake8 ."],
-    "Types": ["mypy ."],
-    "Tests": ["pytest"],
-    "Custom": ["your-command --check"]  # Add new verification
-}
-```
-
-Each verification can run multiple commands in sequence. All commands must succeed for the verification to pass.
+To add or modify verifications, update this configuration map with the desired commands.
