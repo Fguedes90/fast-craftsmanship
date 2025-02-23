@@ -1,12 +1,4 @@
-# All UI content has been moved to the fcship/tui module.
-TableData: TypeAlias = list[TableRow]
-StyleValidator: TypeAlias = Callable[[str], ValidationResult]
-DisplayFunction = Callable[[T], DisplayResult]
-RecoveryStrategy: TypeAlias = dict[str, Callable[[], Result[T, DisplayError]]]
-ProgressProcessor: TypeAlias = Callable[[T], Result[U, str]]
-
-# Valid styles for Rich
-VALID_STYLES = tuple(sorted(["red", "green", "blue", "yellow", "cyan", "magenta", "white", "black"]))
+# Deprecated: All UI content has been moved to the fcship/tui module.
 
 # Validation functions
 def is_valid_style(style: str) -> bool:
