@@ -165,10 +165,7 @@ def add_row_to_table(table: Table, row: TableRow) -> TableResult:
         return Error(DisplayError.Rendering("Failed to add row to table", e))
 
 def _try_create_panel(content: str, title: str, style: str) -> PanelResult:
-    try:
-        return Ok(Panel(content, title=title, border_style=style))
-    except Exception as e:
-        return Error(DisplayError.Rendering("Failed to create panel", e))
+    return Ok(Panel(content, title=title, border_style=style))
 
 def create_panel(title: str, content: str, style: str) -> PanelResult:
     """Cria um painel com os parâmetros fornecidos."""
