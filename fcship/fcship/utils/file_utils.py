@@ -1,11 +1,8 @@
 from pathlib import Path
-from typing import Optional, Callable, TypeVar, Sequence, Tuple, Any
+from typing import Optional, Callable, TypeVar, Tuple
 import typer
-from pydantic import BaseModel, Field
-from typing_extensions import Annotated
 from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
 from expression.collections import Map, Block
-from functools import reduce
 
 A = TypeVar('A')
 E = TypeVar('E')
@@ -13,7 +10,14 @@ E = TypeVar('E')
 FileContent = Tuple[Path, str]
 RawFileContent = Tuple[str, str]
 
+from typing import NamedTuple
 from dataclasses import dataclass
+
+class FileStatus(NamedTuple):
+    path: str
+    status: str
+
+ValidationResult = Result[None, typer.BadParameter]
 
 @dataclass(frozen=True)
 class FileError:
@@ -22,10 +26,10 @@ class FileError:
 
 @dataclass(frozen=True)
 class FileCreationTracker:
-    files: Block[tuple[str, str]] = Block.empty()
+    files: Block[FileStatus] = Block.empty()
 
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
-        return Ok(FileCreationTracker(self.files.cons((path, status))))
+        return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
 
 
@@ -58,7 +62,7 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> Result[FileCreationTracker, FileError]:
     return files.fold(
-        lambda acc, item: acc.bind(lambda tr: create_single_file(tr, (base / item[0], item[1]))),
+        lambda acc, item: acc.bind(lambda tr: create_single_file(tr, build_file_path(base, item))),
         Ok(tracker)
     )
 
@@ -73,11 +77,14 @@ def format_error_message(msg: str, value: str = "") -> str:
 def create_validation_error(msg: str) -> Result[None, typer.BadParameter]:
     return Error(typer.BadParameter(msg))
 
-def validate_name_requirement(operation: str, requires_name: Block[str], name: Optional[str]) -> Result[None, typer.BadParameter]:
-    return create_validation_error(f"Operation '{operation}' requires name") if operation in requires_name and not name else Ok(None)
+def check(condition: bool, msg: str) -> ValidationResult:
+    return Ok(None) if condition else Error(typer.BadParameter(msg))
 
-def validate_operation_existence(valid_ops: Block[str], operation: str) -> Result[None, typer.BadParameter]:
-    return create_validation_error(format_error_message("Invalid operation", operation)) if operation not in valid_ops else Ok(None)
+def validate_name_requirement(operation: str, requires_name: Block[str], name: Optional[str]) -> ValidationResult:
+    return check(not (operation in requires_name and not name), f"Operation '{operation}' requires name")
+
+def validate_operation_existence(valid_ops: Block[str], operation: str) -> ValidationResult:
+    return check(operation in valid_ops, f"Invalid operation: {operation}")
 
 def bind_name_validation(requires_name: Block[str], name: Optional[str], operation: str) -> Callable[[Result[None, typer.BadParameter]], Result[None, typer.BadParameter]]:
     return lambda _: validate_name_requirement(operation, requires_name, name)
