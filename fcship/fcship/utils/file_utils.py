@@ -122,7 +122,7 @@ def process_all_files(
 ) -> Result[FileCreationTracker, FileError]:
     """Pure: Process file creation as a fold over file list."""
     return files.fold(
-        lambda acc, item: acc.bind(lambda t: create_single_file(t, build_file_path(base, item))),
+        lambda acc, item: acc >> (lambda t: create_single_file(t, build_file_path(base, item))),
         Ok(tracker)
     )
 
@@ -180,11 +180,11 @@ def validate_operation(
     name: Optional[str]
 ) -> Result[None, typer.BadParameter]:
     """Pure: Validate operation and name combination."""
-    return pipe(
-        validate_operation_existence(valid_ops, operation),
-        bind_name_validation(requires_name, name, operation)
+    return (
+        validate_operation_existence(valid_ops, operation)
+        .bind(lambda _: validate_name_requirement(operation, requires_name, name))
     )
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
     """Pure: Find a file's status in the tracker."""
-    return Some(tracker.files[path]) if path in tracker.files else Nothing
+    return tracker.files.find(lambda x: x[0] == path).map(lambda x: x[1])
