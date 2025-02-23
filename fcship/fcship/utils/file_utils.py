@@ -4,8 +4,11 @@ import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
 from expression.collections import Map, Block
 
-A = TypeVar('A')
-E = TypeVar('E')
+from typing import TypeVar
+A = TypeVar("A")
+E = TypeVar("E")
+T = TypeVar("T")
+FileResult = Result[T, FileError]
 
 FileContent = Tuple[Path, str]
 RawFileContent = Tuple[str, str]
@@ -37,17 +40,17 @@ class FileCreationTracker:
 from expression.core import try_
 
 @try_[FileError]()
-def ensure_directory(path: Path) -> Result[None, FileError]:
+def ensure_directory(path: Path) -> FileResult[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 @try_[FileError]()
-def write_file(path: Path, content: str) -> Result[None, FileError]:
+def write_file(path: Path, content: str) -> FileResult[None]:
     path.write_text(content)
 
 
-def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> Result[FileCreationTracker, FileError]:
+def create_single_file(tracker: FileCreationTracker, path_content: FileContent) -> FileResult[FileCreationTracker]:
     path, content = path_content
-    
+
     return pipe(
         ensure_directory(path),
         result.bind(lambda _: write_file(path, content)),
@@ -59,7 +62,7 @@ def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
 
 
 
-def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> Result[FileCreationTracker, FileError]:
+def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCreationTracker) -> FileResult[FileCreationTracker]:
     return files.fold(
         lambda acc, item: pipe(
             acc,
@@ -68,7 +71,7 @@ def process_all_files(base: Path, files: Block[RawFileContent], tracker: FileCre
         Ok(tracker)
     )
 
-def create_files(files: Map[str, str], base_path: str = "") -> Result[FileCreationTracker, FileError]:
+def create_files(files: Map[str, str], base_path: str = "") -> FileResult[FileCreationTracker]:
     return pipe(
         Ok(Path(base_path)),
         result.bind(lambda base: process_all_files(base, files, FileCreationTracker()))
