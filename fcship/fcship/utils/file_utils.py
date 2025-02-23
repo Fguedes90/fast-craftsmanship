@@ -1,27 +1,31 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar, Tuple
 import typer
 from expression import Result, Ok, Error, Option, Some, Nothing, pipe, result
 from expression.collections import Map, Block
-
-from typing import TypeVar
-A = TypeVar("A")
-E = TypeVar("E")
-T = TypeVar("T")
-
+from expression.core import try_
 from typing import NamedTuple
 from dataclasses import dataclass
+
+A = type("A")
+E = type("E")
+T = type("T")
+ValidationResult = Result[None, typer.BadParameter]
+FileContent = tuple[Path, str]
+RawFileContent = tuple[str, str]
+@dataclass(frozen=True)
+class FileError:
+    message: str
+    path: str
+FileResult = Result[T, FileError]
+
+
 
 class FileStatus(NamedTuple):
     path: str
     status: str
 
-ValidationResult = Result[None, typer.BadParameter]
 
-@dataclass(frozen=True)
-class FileError:
-    message: str
-    path: str
 
 @dataclass(frozen=True)
 class FileCreationTracker:
@@ -30,15 +34,6 @@ class FileCreationTracker:
     def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
         return Ok(FileCreationTracker(self.files.cons(FileStatus(path, status))))
 
-FileResult = Result[T, FileError]
-
-FileContent = Tuple[Path, str]
-RawFileContent = Tuple[str, str]
-
-
-
-
-from expression.core import try_
 
 @try_[FileError]()
 def ensure_directory(path: Path) -> FileResult[None]:
@@ -100,7 +95,7 @@ def validate_operation(
     valid_ops: Block[str], 
     requires_name: Block[str], 
     operation: str, 
-    name: Optional[str]
+    name: str | None
 ) -> Result[None, typer.BadParameter]:
     checks = Block.of(
         (operation in valid_ops, f"Invalid operation: {operation}"),
@@ -112,7 +107,6 @@ def validate_operation(
     
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
-    """Pure: Find a file's status in the tracker."""
     return pipe(
         tracker.files,
         lambda files: files.filter(lambda fs: fs.path == path),
