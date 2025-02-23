@@ -8,7 +8,6 @@ from .functional import option_to_result
 T = TypeVar('T')
 E = TypeVar('E', bound=Exception)
 
-@effect.try_[str]()
 def validate_operation(
     operation: str,
     valid_operations: list[str],
