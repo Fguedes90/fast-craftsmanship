@@ -1,0 +1,15 @@
+[project]
+name = "fast-craftsmanship"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "expression>=5.6.0",
+    "hypothesis>=6.127.1",
+    "pydantic>=2.10.6",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "pytest-cov>=6.0.0",
+    "typer>=0.15.1",
+]
