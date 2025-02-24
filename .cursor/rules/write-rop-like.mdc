@@ -9,6 +9,7 @@ globs: **/*.py
 - ❌ NO for/while loops - Use functional operations or recursion
 - ❌ NO if/else statements - Use pattern matching and pipeline
 - ❌ Avoid using .bind - Use @effect.result or pipeline instead
+- ❌ Never use async await - Use "@effect.result" with "yield from {callable->Result}" instead 
 
 ## Required Imports
 ```python

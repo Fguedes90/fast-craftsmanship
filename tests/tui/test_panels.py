@@ -84,9 +84,10 @@ def test_nested_panel_properties():
         inner_style="green"
     )
     assert result.is_ok()
-    assert isinstance(result.ok, Panel)
-    assert result.ok.title == title
-    assert result.ok.border_style == "blue"
+    panel = result.ok
+    assert isinstance(panel, Panel)
+    assert panel.title == title
+    assert panel.border_style == "blue"
 
 # Test invalid type configurations
 INVALID_CONFIG_TITLE = PanelConfig(title=123, content=VALID_CONTENT, style=VALID_STYLE)  # type: ignore

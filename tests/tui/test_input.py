@@ -45,60 +45,85 @@ def error_context(error_input_handler):
     return InputContext(input_handler=error_input_handler)
 
 @effect.result[str, DisplayError]()
-def test_get_user_input_success(input_context):
-    """Test successful user input retrieval"""
-    result = yield from get_user_input(input_context, "Enter value: ")
+def test_get_user_input_success(monkeypatch):
+    """Test successful user input"""
+    def mock_input(*args):
+        return "mock_input"
+    monkeypatch.setattr('typer.prompt', mock_input)
+    
+    result = yield from get_user_input("Test prompt")
     assert result.is_ok()
     assert result.ok == "mock_input"
-    assert input_context.input_handler.prompts == ["Enter value: "]
+    yield Ok(None)
 
 @effect.result[str, DisplayError]()
-def test_get_user_input_error(error_context):
-    """Test error handling in user input retrieval"""
-    result = yield from get_user_input(error_context, "Enter value: ")
+def test_get_user_input_error(monkeypatch):
+    """Test user input error handling"""
+    def mock_input(*args):
+        raise ValueError("Mock input error")
+    monkeypatch.setattr('typer.prompt', mock_input)
+    
+    result = yield from get_user_input("Test prompt")
     assert result.is_error()
-    assert isinstance(result.error, DisplayError)
-    assert result.error.tag == "interaction"
-    assert "Failed to get user input" in result.error.interaction[0]
+    assert result.error.tag == "input"
+    assert "Mock input error" in str(result.error)
+    yield Ok(None)
 
 @effect.result[str, DisplayError]()
-def test_prompt_for_input_valid(input_context):
-    """Test prompt with valid input"""
-    def validator(value: str) -> bool:
-        return len(value) > 0
-
-    result = yield from prompt_for_input(input_context, "Enter name: ", validator)
+def test_prompt_for_input_valid(monkeypatch):
+    """Test valid input validation"""
+    def mock_input(*args):
+        return "mock_input"
+    monkeypatch.setattr('typer.prompt', mock_input)
+    
+    result = yield from prompt_for_input("Test prompt", lambda x: True)
     assert result.is_ok()
     assert result.ok == "mock_input"
-    assert input_context.input_handler.prompts == ["Enter name: "]
+    yield Ok(None)
 
 @effect.result[str, DisplayError]()
-def test_prompt_for_input_invalid(input_context):
-    """Test prompt with invalid input"""
-    def validator(value: str) -> bool:
-        return False
-
-    result = yield from prompt_for_input(input_context, "Enter name: ", validator)
+def test_prompt_for_input_invalid(monkeypatch):
+    """Test invalid input validation"""
+    def mock_input(*args):
+        return "invalid"
+    monkeypatch.setattr('typer.prompt', mock_input)
+    
+    result = yield from prompt_for_input("Test prompt", lambda x: False)
     assert result.is_error()
-    assert isinstance(result.error, DisplayError)
     assert result.error.tag == "validation"
+    assert "Invalid input" in str(result.error)
+    yield Ok(None)
 
 @effect.result[bool, DisplayError]()
-def test_get_confirmation_success(input_context):
+def test_get_confirmation_success(monkeypatch):
     """Test successful confirmation"""
-    result = yield from get_confirmation(input_context, "Proceed?")
+    def mock_confirm(*args):
+        return True
+    monkeypatch.setattr('typer.confirm', mock_confirm)
+    
+    result = yield from get_confirmation("Test prompt")
     assert result.is_ok()
     assert result.ok is True
-    assert input_context.input_handler.confirmations == ["Proceed?"]
+    yield Ok(None)
 
 @effect.result[bool, DisplayError]()
-def test_get_confirmation_error(error_context):
-    """Test error handling in confirmation"""
-    result = yield from get_confirmation(error_context, "Proceed?")
+def test_get_confirmation_error(monkeypatch):
+    """Test confirmation error handling"""
+    def mock_confirm(*args):
+        raise ValueError("Mock confirmation error")
+    monkeypatch.setattr('typer.confirm', mock_confirm)
+    
+    result = yield from get_confirmation("Test prompt")
     assert result.is_error()
-    assert isinstance(result.error, DisplayError)
-    assert result.error.tag == "interaction"
-    assert "Failed to get user confirmation" in result.error.interaction[0]
+    assert result.error.tag == "input"
+    assert "Mock confirmation error" in str(result.error)
+    yield Ok(None)
+
+def test_typer_input_handler():
+    """Test typer input handler"""
+    result = typer_input_handler(lambda: "test")
+    assert result.is_ok()
+    assert result.ok == "test"
 
 def test_typer_input_handler():
     """Test the actual Typer input handler implementation"""

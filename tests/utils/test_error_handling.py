@@ -47,17 +47,17 @@ def test_handle_command_errors_sync_failure():
     with pytest.raises(Exit):
         failing_function()
 
-def test_handle_command_errors_sync_display_message(monkeypatch):
+def test_handle_command_errors_sync_error_message(monkeypatch):
     """
     Garante que, na versão síncrona, quando ocorre um erro,
-    _on_error chame display_message com a mensagem de erro correta.
+    _on_error chame error_message com a mensagem de erro correta.
     """
     messages = []
 
-    def fake_display_message(message: str, style: str) -> None:
-        messages.append((message, style))
+    def fake_error_message(ctx, message: str) -> None:
+        messages.append(message)
 
-    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+    monkeypatch.setattr(error_handling, "error_message", fake_error_message)
 
     @error_handling.handle_command_errors
     def failing_function():
@@ -66,7 +66,7 @@ def test_handle_command_errors_sync_display_message(monkeypatch):
     with pytest.raises(Exit):
         failing_function()
 
-    assert messages == [("Error: sync display error", "bold red")]
+    assert messages == ["sync display error"]
 
 
 @pytest.mark.asyncio
@@ -91,17 +91,17 @@ async def test_handle_command_errors_async_failure():
         await failing_async_function()
 
 @pytest.mark.asyncio
-async def test_handle_command_errors_async_display_message(monkeypatch):
+async def test_handle_command_errors_async_error_message(monkeypatch):
     """
     Garante que, na versão assíncrona, quando ocorre um erro,
-    _on_error chame display_message com a mensagem de erro correta.
+    _on_error chame error_message com a mensagem de erro correta.
     """
     messages = []
 
-    def fake_display_message(message: str, style: str) -> None:
-        messages.append((message, style))
+    def fake_error_message(ctx, message: str) -> None:
+        messages.append(message)
 
-    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+    monkeypatch.setattr(error_handling, "error_message", fake_error_message)
 
     @error_handling.handle_command_errors
     async def failing_async_function():
@@ -110,32 +110,32 @@ async def test_handle_command_errors_async_display_message(monkeypatch):
     with pytest.raises(Exit):
         await failing_async_function()
 
-    assert messages == [("Error: async display error", "bold red")]
+    assert messages == ["async display error"]
 
-def test__on_error_calls_display_message(monkeypatch):
+def test__on_error_calls_error_message(monkeypatch):
     """
-    Test that _on_error calls display_message with the correct message and style.
+    Test that _on_error calls error_message with the correct message.
     """
     messages = []
-    def fake_display_message(message: str, style: str) -> None:
-        messages.append((message, style))
-    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+    def fake_error_message(ctx, message: str) -> None:
+        messages.append(message)
+    monkeypatch.setattr(error_handling, "error_message", fake_error_message)
     with pytest.raises(Exit):
         error_handling._on_error(ValueError("direct test error"))
-    assert messages == [("Error: direct test error", "bold red")]
+    assert messages == ["direct test error"]
 
-def test__on_error_uses_wrapped_display_message(monkeypatch):
+def test__on_error_uses_wrapped_error_message(monkeypatch):
     """
-    Test that _on_error uses the __wrapped__ attribute of display_message, if available.
+    Test that _on_error uses the __wrapped__ attribute of error_message, if available.
     """
     messages = []
-    def fake_display_message(message: str, style: str) -> None:
-        messages.append((message, style))
-    fake_display_message.__wrapped__ = fake_display_message
-    monkeypatch.setattr(error_handling, "display_message", fake_display_message)
+    def fake_error_message(ctx, message: str) -> None:
+        messages.append(message)
+    fake_error_message.__wrapped__ = fake_error_message
+    monkeypatch.setattr(error_handling, "error_message", fake_error_message)
     with pytest.raises(Exit):
         error_handling._on_error(ValueError("wrapped error"))
-    assert messages == [("Error: wrapped error", "bold red")]
+    assert messages == ["wrapped error"]
 
 
 

@@ -83,9 +83,15 @@ def ui_context_manager() -> Generator[None, None, None]:
     finally:
         safe_clear()
 
-def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
-    """Handle UI errors functionally"""
-    return Error(error)
+def handle_ui_error(error: Exception) -> Result[None, UIError]:
+    """Handle UI-related errors and convert them to UIError"""
+    match error:
+        case ValueError():
+            return Error(UIError.Validation(str(error)))
+        case IOError():
+            return Error(UIError.Rendering("IO operation failed", error))
+        case _:
+            return Error(UIError.Operation("Operation failed", error))
 
 def with_fallback(
     operation: Callable[[], Result[T, DisplayError]],
@@ -145,33 +151,64 @@ def recover_ui(
     
     return try_recover(0)
 
-def with_ui_context(ui_op: UIOperation[T]) -> Result[T, DisplayError]:
+def with_ui_context(
+    operation: Callable[[], T] | UIOperation[T],
+    setup: Optional[Callable[[], None]] = None,
+    cleanup: Optional[Callable[[], None]] = None
+) -> Result[T, DisplayError]:
     """Execute an operation in UI context with setup and cleanup"""
-    def run_phase(phase: Optional[Callable[[], Result[None, DisplayError]]]) -> Result[None, DisplayError]:
-        return phase() if phase else Ok(None)
-    
+    def wrap_operation(fn: Callable[[], T]) -> Callable[[], Result[T, DisplayError]]:
+        def wrapped() -> Result[T, DisplayError]:
+            try:
+                result = fn()
+                return Ok(result)
+            except Exception as e:
+                return Error(handle_error(e))
+        return wrapped
+
+    def run_phase(phase: Optional[Callable[[], None]]) -> Result[None, DisplayError]:
+        if not phase:
+            return Ok(None)
+        try:
+            phase()
+            return Ok(None)
+        except Exception as e:
+            return Error(handle_error(e))
+
     def handle_error(e: Exception) -> DisplayError:
         match e:
             case ValueError():
-                return DisplayError.Validation(str(e))
+                return DisplayError.Rendering("Operation failed", e)
             case IOError():
                 return DisplayError.Rendering("IO operation failed", e)
             case TypeError():
                 return DisplayError.Validation(str(e))
             case _:
                 return DisplayError.Rendering("Operation failed", e)
-    
-    def run_operation() -> Result[T, DisplayError]:
-        try:
-            return ui_op.operation()
-        except Exception as e:
-            return Error(handle_error(e))
-    
+
+    # Convert operation to UIOperation if it's a plain function
+    ui_op = (
+        operation if isinstance(operation, UIOperation)
+        else UIOperation(
+            operation=wrap_operation(operation),
+            setup=setup,
+            cleanup=cleanup
+        )
+    )
+
+    # Run the operation in context
     return pipe(
         run_phase(ui_op.setup),
-        lambda setup: setup.bind(lambda _: run_operation()),
-        lambda result: result.bind(lambda r: pipe(
-            run_phase(ui_op.cleanup),
-            lambda cleanup: cleanup.map(lambda _: r)
-        ))
-    ).map_error(handle_error)
+        lambda setup_result: setup_result.bind(
+            lambda _: (
+                ui_op.operation() if isinstance(ui_op, UIOperation)
+                else wrap_operation(ui_op)()
+            )
+        ),
+        lambda result: result.bind(
+            lambda r: pipe(
+                run_phase(ui_op.cleanup),
+                lambda cleanup_result: cleanup_result.map(lambda _: r)
+            )
+        )
+    )

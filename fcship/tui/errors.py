@@ -5,12 +5,13 @@ from expression import tagged_union
 @tagged_union
 class DisplayError:
     """Represents display-related errors."""
-    tag: Literal["validation", "rendering", "interaction", "timeout", "execution"]
+    tag: Literal["validation", "rendering", "interaction", "timeout", "execution", "input"]
     validation: str | None = None
     rendering: tuple[str, Exception] | None = None
     interaction: tuple[str, Exception] | None = None
     timeout: tuple[str, Exception] | None = None
     execution: tuple[str, str] | None = None
+    input: tuple[str, str] | None = None
 
     @staticmethod
     def Validation(message: str) -> "DisplayError":
@@ -37,6 +38,11 @@ class DisplayError:
         """Create execution error."""
         return DisplayError(tag="execution", execution=(message, error))
 
+    @staticmethod
+    def Input(message: str, error: str) -> "DisplayError":
+        """Create input error."""
+        return DisplayError(tag="input", input=(message, error))
+
     def __str__(self) -> str:
         """Convert error to string."""
         match self:
@@ -50,5 +56,7 @@ class DisplayError:
                 return f"Timeout Error: {msg} - {str(exc)}"
             case DisplayError(tag="execution", execution=(msg, err)):
                 return f"Execution Error: {msg} - {err}"
+            case DisplayError(tag="input", input=(msg, err)):
+                return f"Input Error: {msg} - {err}"
             case _:
                 return "Unknown Error" 

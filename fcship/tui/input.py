@@ -32,13 +32,13 @@ Validator = Callable[[str], bool]
 input_ctx = InputContext(input_handler=TyperInputHandler())
 
 @effect.result[str, DisplayError]()
-def get_user_input(ctx: InputContext, prompt: str) -> Generator[Result[str, DisplayError], Any, Result[str, DisplayError]]:
+def get_user_input(prompt: str, ctx: InputContext = input_ctx) -> Generator[Result[str, DisplayError], Any, Result[str, DisplayError]]:
     """Get user input in a pure way"""
     try:
         value = ctx.input_handler.prompt(prompt)
         yield Ok(value)
     except Exception as e:
-        yield Error(DisplayError.Interaction("Failed to get user input", e))
+        yield Error(DisplayError.Input("Failed to get user input", str(e)))
 
 def validate_input(value: str, validator: Validator) -> InputResult:
     """Validate user input"""
@@ -49,28 +49,30 @@ def validate_input(value: str, validator: Validator) -> InputResult:
     )
 
 @effect.result[str, DisplayError]()
-def prompt_for_input(ctx: InputContext, prompt: str, validator: Validator) -> Generator[Result[str, DisplayError], Any, Result[str, DisplayError]]:
-    """Prompt for and validate user input"""
-    result = yield from get_user_input(ctx, prompt)
+def prompt_for_input(prompt: str, validator: Validator, ctx: InputContext = input_ctx) -> Generator[Result[str, DisplayError], Any, Result[str, DisplayError]]:
+    """Get and validate user input"""
+    result = yield from get_user_input(prompt, ctx)
     if result.is_error():
-        return result
-    return validate_input(result.ok, validator)
+        yield result
+    else:
+        yield validate_input(result.ok, validator)
 
 @effect.result[bool, DisplayError]()
-def get_confirmation(ctx: InputContext, message: str) -> Generator[Result[bool, DisplayError], Any, Result[bool, DisplayError]]:
-    """Get user confirmation in a pure way"""
+def get_confirmation(message: str, ctx: InputContext = input_ctx) -> Generator[Result[bool, DisplayError], Any, Result[bool, DisplayError]]:
+    """Get user confirmation"""
     try:
         value = ctx.input_handler.confirm(message)
         yield Ok(value)
     except Exception as e:
-        yield Error(DisplayError.Interaction("Failed to get user confirmation", e))
+        yield Error(DisplayError.Input("Failed to get user confirmation", str(e)))
 
 @effect.result[bool, DisplayError]()
-def confirm_action(ctx: InputContext, message: str) -> Result[bool, DisplayError]:
-    """Get user confirmation with error handling"""
-    value = yield from get_confirmation(ctx, message)
-    match value:
-        case Ok(value):
-            return Ok(value)
-        case Error(e):
-            return Error(e)
+def confirm_action(message: str, ctx: InputContext = input_ctx) -> Result[bool, DisplayError]:
+    """Get user confirmation for an action"""
+    return pipe(
+        get_confirmation(message, ctx),
+        lambda result: result.bind(lambda confirmed: (
+            Ok(True) if confirmed
+            else Error(DisplayError.Validation("Action cancelled by user"))
+        ))
+    )

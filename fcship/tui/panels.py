@@ -50,9 +50,10 @@ def _create_panel_safe(config: PanelConfig) -> Result[Panel, DisplayError]:
         lambda r: r.bind(_create_panel_unsafe)
     )
 
+@effect.result[Panel, DisplayError]()
 def _create_inner_panel(inner_style: str, section: PanelSection) -> Result[Panel, DisplayError]:
     """Create an inner panel with specific style"""
-    return create_panel(section.title, section.content, inner_style)
+    return (yield from create_panel(section.title, section.content, inner_style))
 
 def _join_panels(panels: List[Panel]) -> str:
     """Join multiple panels into a single string"""
@@ -99,8 +100,9 @@ def create_nested_panel(
     
     # Create inner panels
     inner_panels_result = yield from _create_inner_panels(panel_sections, inner_style)
+    if inner_panels_result.is_error():
+        return Error(inner_panels_result.error)
     
     # Join panels and create outer panel
     content = _join_panels(inner_panels_result.ok)
-    panel = yield from create_panel(title, content, outer_style)
-    return Ok(panel.ok)
+    return (yield from create_panel(title, content, outer_style))

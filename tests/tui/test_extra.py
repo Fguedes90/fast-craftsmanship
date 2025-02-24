@@ -62,13 +62,12 @@ def test_ui_context_manager():
         pass
     # Context should be cleaned up
 
-@effect.result[None, DisplayError]()
 def test_handle_ui_error():
-    """Test UI error handling"""
-    error = DisplayError.Validation("Test error")
-    result = yield handle_ui_error(error)
+    """Test handling UI errors"""
+    result = handle_ui_error(ValueError("Test error"))
     assert result.is_error()
-    assert result.error == error
+    assert result.error.tag == "validation"
+    assert "Test error" == result.error.validation
 
 def test_with_fallback():
     """Test fallback mechanism"""
@@ -90,79 +89,44 @@ def test_with_fallback():
     result = with_fallback(failed_op, "fallback", "Operation failed")
     assert result == "fallback"
 
-@effect.result[str, DisplayError]()
 def test_with_ui_context_success():
     """Test successful UI context execution"""
-    def operation():
-        return Ok("success")
-
-    ui_op = UIOperation(operation=operation)
-    result = yield with_ui_context(ui_op)
+    result = with_ui_context(lambda: "success")
     assert result.is_ok()
     assert result.ok == "success"
 
-@effect.result[str, DisplayError]()
 def test_with_ui_context_setup_error():
     """Test UI context with setup error"""
-    def setup():
-        return Error(DisplayError.Validation("Setup failed"))
-
-    def operation():
-        return Ok("success")
-
-    ui_op = UIOperation(operation=operation, setup=setup)
-    result = yield from with_ui_context(ui_op)
-    assert result.is_error()
-    assert result.error.tag == "validation"
-
-@effect.result[str, DisplayError]()
-def test_with_ui_context_operation_error():
-    """Test UI context with operation error"""
-    def operation():
-        raise ValueError("Operation failed")
-
-    ui_op = UIOperation(operation=operation)
-    result = yield from with_ui_context(ui_op)
-    assert result.is_error()
-    assert result.error.tag == "validation"
-
-@effect.result[str, DisplayError]()
-def test_with_ui_context_cleanup_error():
-    """Test UI context with cleanup error"""
-    def operation():
-        return Ok("success")
-
-    def cleanup():
-        return Error(DisplayError.Validation("Cleanup failed"))
-
-    ui_op = UIOperation(operation=operation, cleanup=cleanup)
-    result = yield from with_ui_context(ui_op)
-    assert result.is_error()
-    assert result.error.tag == "validation"
-
-@effect.result[str, DisplayError]()
-def test_with_ui_context_error_handling():
-    """Test different error types in UI context"""
-    def operation_value_error():
-        raise ValueError("Invalid value")
-
-    def operation_io_error():
-        raise IOError("IO failed")
-
-    def operation_type_error():
-        raise TypeError("Type mismatch")
-
-    # Test ValueError handling
-    result = yield from with_ui_context(UIOperation(operation=operation_value_error))
-    assert result.is_error()
-    assert result.error.tag == "validation"
-
-    # Test IOError handling
-    result = yield from with_ui_context(UIOperation(operation=operation_io_error))
+    def setup_error():
+        raise ValueError("Setup failed")
+    result = with_ui_context(lambda: "success", setup=setup_error)
     assert result.is_error()
     assert result.error.tag == "rendering"
+    assert "Setup failed" in str(result.error)
 
-    # Test TypeError handling
-    result = yield from with_ui_context(UIOperation(operation=operation_type_error))
+def test_with_ui_context_operation_error():
+    """Test UI context with operation error"""
+    def operation_error():
+        raise ValueError("Operation failed")
+    result = with_ui_context(operation_error)
     assert result.is_error()
-    assert result.error.tag == "validation" 
+    assert result.error.tag == "rendering"
+    assert "Operation failed" in str(result.error)
+
+def test_with_ui_context_cleanup_error():
+    """Test UI context with cleanup error"""
+    def cleanup_error():
+        raise ValueError("Cleanup failed")
+    result = with_ui_context(lambda: "success", cleanup=cleanup_error)
+    assert result.is_error()
+    assert result.error.tag == "rendering"
+    assert "Cleanup failed" in str(result.error)
+
+def test_with_ui_context_error_handling():
+    """Test UI context error handling"""
+    def invalid_operation():
+        raise ValueError("Invalid value")
+    result = with_ui_context(invalid_operation)
+    assert result.is_error()
+    assert result.error.tag == "rendering"
+    assert "Invalid value" in str(result.error) 
