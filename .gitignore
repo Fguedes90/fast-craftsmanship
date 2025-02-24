@@ -10,3 +10,4 @@ node_modules/
 **/*.gz
 **/fschip.egg-info/*.txt
 **/.coverage
+**/*.egg-info

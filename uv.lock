@@ -106,6 +106,11 @@ dependencies = [
     { name = "typer" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "fast-craftsmanship" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "expression", specifier = ">=5.6.0" },
@@ -117,6 +122,9 @@ requires-dist = [
     { name = "pytest-mock", specifier = ">=3.14.0" },
     { name = "typer", specifier = ">=0.15.1" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "fast-craftsmanship", virtual = "." }]
 
 [[package]]
 name = "hypothesis"

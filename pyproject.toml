@@ -14,3 +14,18 @@ dependencies = [
     "pytest-mock>=3.14.0",
     "typer>=0.15.1",
 ]
+
+[dependency-groups]
+dev = [
+    "fast-craftsmanship",
+]
+
+[project.scripts]
+fcship = "fcship.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fcship*"]
+exclude = ["api*", "tests*"]
+
+[tool.uv.sources]
+fast-craftsmanship = { workspace = true }
