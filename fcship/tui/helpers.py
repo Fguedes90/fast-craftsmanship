@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from expression import Ok, Error, Result, pipe, tagged_union, effect
 from fcship.tui.errors import DisplayError
 from typing import Any, TypeVar, Callable, List, Tuple, Optional, Literal
-from functools import partial
+from functools import partial, reduce
 from dataclasses import dataclass
 
 T = TypeVar('T')
@@ -89,13 +89,11 @@ def validate_style(style: str) -> Result[str, DisplayError]:
 def _combine_validation_results(results: List[Result[T, DisplayError]]) -> Result[List[T], DisplayError]:
     """Combines multiple validation results into a single Result"""
     def combine(acc: Result[List[T], DisplayError], curr: Result[T, DisplayError]) -> Result[List[T], DisplayError]:
-        match (acc, curr):
-            case (Error(e), _):
-                return Error(e)
-            case (_, Error(e)):
-                return Error(e)
-            case (Ok(values), Ok(value)):
-                return Ok([*values, value])
+        if acc.is_error():
+            return acc
+        if curr.is_error():
+            return curr
+        return Ok([*acc.ok, curr.ok])
     
     return pipe(
         results,

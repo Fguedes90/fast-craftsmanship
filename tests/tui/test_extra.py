@@ -63,10 +63,10 @@ def test_ui_context_manager():
     # Context should be cleaned up
 
 @effect.result[None, DisplayError]()
-async def test_handle_ui_error():
+def test_handle_ui_error():
     """Test UI error handling"""
     error = DisplayError.Validation("Test error")
-    result = await handle_ui_error(error)
+    result = yield handle_ui_error(error)
     assert result.is_error()
     assert result.error == error
 
@@ -97,7 +97,7 @@ def test_with_ui_context_success():
         return Ok("success")
 
     ui_op = UIOperation(operation=operation)
-    result = yield from with_ui_context(ui_op)
+    result = yield with_ui_context(ui_op)
     assert result.is_ok()
     assert result.ok == "success"
 

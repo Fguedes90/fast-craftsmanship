@@ -83,7 +83,7 @@ def ui_context_manager() -> Generator[None, None, None]:
     finally:
         safe_clear()
 
-async def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
+def handle_ui_error(error: DisplayError) -> Result[None, DisplayError]:
     """Handle UI errors functionally"""
     return Error(error)
 
@@ -93,16 +93,12 @@ def with_fallback(
     error_msg: Optional[str] = None
 ) -> T:
     """Execute a UI operation with fallback value on error"""
-    return pipe(
-        Ok(operation),
-        lambda op: op.bind(lambda fn: fn()),
-        lambda result: result.map_error(lambda e: (
-            console.print(f"[red]{error_msg}: {str(e)}[/red]")
-            if error_msg
-            else None,
-            fallback
-        )[1]).unwrap_or(fallback)
-    )
+    result = operation()
+    if result.is_ok():
+        return result.ok
+    if error_msg:
+        console.print(f"[red]{error_msg}: {str(result.error)}[/red]")
+    return fallback
 
 async def with_retry(
     operation: Callable[[], Result[T, DisplayError]],
@@ -165,9 +161,15 @@ def with_ui_context(ui_op: UIOperation[T]) -> Result[T, DisplayError]:
             case _:
                 return DisplayError.Rendering("Operation failed", e)
     
+    def run_operation() -> Result[T, DisplayError]:
+        try:
+            return ui_op.operation()
+        except Exception as e:
+            return Error(handle_error(e))
+    
     return pipe(
         run_phase(ui_op.setup),
-        lambda setup: setup.bind(lambda _: ui_op.operation()),
+        lambda setup: setup.bind(lambda _: run_operation()),
         lambda result: result.bind(lambda r: pipe(
             run_phase(ui_op.cleanup),
             lambda cleanup: cleanup.map(lambda _: r)

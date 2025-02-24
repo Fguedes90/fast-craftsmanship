@@ -30,23 +30,23 @@ def create_panel_config(title: str, content: str, style: str) -> Result[PanelCon
 
 def _create_panel_unsafe(config: PanelConfig) -> Result[Panel, DisplayError]:
     """Pure function to create a Panel"""
-    return pipe(
-        Ok(config),
-        lambda c: Ok(Panel(c.content, title=c.title, border_style=c.style))
-    ).map_error(lambda e: DisplayError.Rendering(f"Failed to create panel with title '{config.title}'", e))
+    try:
+        return Ok(Panel(config.content, title=config.title, border_style=config.style))
+    except Exception as e:
+        return Error(DisplayError.Rendering(f"Failed to create panel with title '{config.title}'", e))
 
 def _create_panel_safe(config: PanelConfig) -> Result[Panel, DisplayError]:
     """Safe version of panel creation with error handling"""
     def validate_config(cfg: PanelConfig) -> Result[PanelConfig, DisplayError]:
         return (
             Ok(cfg)
-            if all(isinstance(v, str) for v in (cfg.title, cfg.content, cfg.style))
+            if isinstance(cfg, PanelConfig) and all(isinstance(v, str) for v in (cfg.title, cfg.content, cfg.style))
             else Error(DisplayError.Rendering("Invalid panel configuration: all fields must be strings", None))
         )
     
     return pipe(
         Ok(config),
-        lambda c: validate_config(c),
+        lambda r: validate_config(config),
         lambda r: r.bind(_create_panel_unsafe)
     )
 
@@ -72,22 +72,16 @@ def _create_sections(sections: List[Tuple[str, str]]) -> List[PanelSection]:
     """Convert section tuples to PanelSection objects"""
     return [PanelSection(title=title, content=content) for title, content in sections]
 
+@effect.result[List[Panel], DisplayError]()
 def _create_inner_panels(sections: List[PanelSection], inner_style: str) -> Result[List[Panel], DisplayError]:
     """Create all inner panels with error handling"""
-    def create_panels(acc: Result[List[Panel], DisplayError], section: PanelSection) -> Result[List[Panel], DisplayError]:
-        match acc:
-            case Error(e):
-                return Error(e)
-            case Ok(panels):
-                return pipe(
-                    _create_inner_panel(inner_style, section),
-                    lambda r: r.map(lambda p: [*panels, p])
-                )
-    
-    return pipe(
-        sections,
-        lambda s: seq.fold(create_panels, Ok([]), s)
-    )
+    panels: List[Panel] = []
+    for section in sections:
+        panel_result = yield from _create_inner_panel(inner_style, section)
+        if panel_result.is_error():
+            return Error(panel_result.error)
+        panels.append(panel_result.ok)
+    return Ok(panels)
 
 @effect.result[Panel, DisplayError]()
 def create_nested_panel(
@@ -104,10 +98,9 @@ def create_nested_panel(
     panel_sections = _create_sections(sections)
     
     # Create inner panels
-    inner_panels = yield from _create_inner_panels(panel_sections, inner_style)
+    inner_panels_result = yield from _create_inner_panels(panel_sections, inner_style)
     
     # Join panels and create outer panel
-    content = _join_panels(inner_panels)
+    content = _join_panels(inner_panels_result.ok)
     panel = yield from create_panel(title, content, outer_style)
-    
-    return Ok(panel)
+    return Ok(panel.ok)
