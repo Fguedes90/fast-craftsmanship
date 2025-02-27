@@ -12,8 +12,9 @@ import typer
 from expression import effect, pipe, Ok, Error, Result
 from pydantic import BaseModel
 
-from fcship.tui.display import display_success, display_error
-from fcship.utils.error_handling import handle_errors
+from fcship.tui.display import success_message as display_success
+from fcship.tui.display import error_message as display_error
+from fcship.utils.error_handling import handle_command_errors as handle_errors
 
 app = typer.Typer(help="GitHub repository setup commands")
 
@@ -50,7 +51,7 @@ def init_repo(
     return result
 
 
-@effect.result
+@effect.result[str, str]()
 def _create_repository(
     repo_name: str, 
     description: str,
@@ -92,7 +93,7 @@ def protect_branch(
     return result
 
 
-@effect.result
+@effect.result[str, str]()
 def _setup_branch_protection(repo_name: str, rule: BranchProtectionRule) -> Result[str, str]:
     """Set up branch protection rules."""
     # This would use PyGithub or GitHub CLI in actual implementation
@@ -120,7 +121,7 @@ def setup_secrets(
     return result
 
 
-@effect.result
+@effect.result[str, str]()
 def _setup_repository_secrets(
     repo_name: str,
     pypi_token: bool,
@@ -169,7 +170,7 @@ def setup_environments(
     return result
 
 
-@effect.result
+@effect.result[str, str]()
 def _setup_repository_environments(
     repo_name: str,
     environments: List[str],
@@ -206,7 +207,7 @@ def setup_workflows(
     return result
 
 
-@effect.result
+@effect.result[str, str]()
 def _setup_github_workflows(
     repo_name: str,
     ci: bool,
