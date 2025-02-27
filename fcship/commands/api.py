@@ -173,7 +173,12 @@ def api(
 ) -> Result[str, str]:
     """Create new API endpoint files."""
     # Validate operation
-    operation_result = yield from validate_operation(operation, name)
+    try:
+        operation_result = yield from validate_operation(operation, name)
+    except Exception as exc:
+        yield Error(str(exc))
+        return
+
     if operation_result.is_error():
         yield Error(operation_result.error)
         return
