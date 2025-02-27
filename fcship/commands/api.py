@@ -185,9 +185,13 @@ def api(
     
     # Create API
     _, api_name = operation_result.ok
-    result = yield from create_api(api_name)
+    try:
+        result = yield from create_api(api_name)
+    except Exception as e:
+        yield Error(f"Unexpected error: {str(e)}")
+        return
     if result.is_error():
         yield Error(result.error)
         return
-        
+
     yield Ok(result.ok)
