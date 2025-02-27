@@ -46,11 +46,23 @@ ProgressProcessor[T, U]: TypeAlias = Callable[[T], Result[U, str]]
 A tagged union type representing all possible UI-related errors:
 
 ```python
+@tagged_union
 class DisplayError:
-    tag: Literal["validation", "rendering", "interaction"]
-    validation: str | None
-    rendering: tuple[str, Exception] | None
-    interaction: tuple[str, Exception] | None
+    """Represents display-related errors."""
+    tag: Literal["validation", "rendering", "interaction", "timeout", "execution", "input"]
+    validation: str | None = None
+    rendering: tuple[str, Exception] | None = None
+    interaction: tuple[str, Exception] | None = None
+    timeout: tuple[str, Exception] | None = None
+    execution: tuple[str, str] | None = None
+    input: tuple[str, str] | None = None
+    
+    # Static constructors for each error type
+    @staticmethod
+    def Validation(message: str) -> "DisplayError":
+        return DisplayError(tag="validation", validation=message)
+        
+    # Other constructors omitted for brevity
 ```
 
 ### Result-based Error Handling
@@ -297,71 +309,72 @@ def process_items(items: list[str]) -> DisplayResult:
     )
 ```
 
-### Interactive Menus
-
-Creating interactive command menus:
-
-```python
-def display_menu(options: dict[str, Callable[[], DisplayResult]]) -> DisplayResult:
-    def show_options() -> DisplayResult:
-        return create_multi_column_table(
-            [("Option", "cyan"), ("Description", None)],
-            [[k, v.__doc__ or ""] for k, v in options.items()],
-            "Available Commands"
-        ).bind(lambda table: Ok(console.print(table)))
-    
-    return (
-        show_options()
-        .bind(lambda _: prompt_for_input(
-            "Select option: ",
-            lambda v: Ok(v) if v in options else Error("Invalid option")
-        ))
-        .bind(lambda choice: options[choice]())
-    )
-```
-
 ## Terminal UI (TUI)
 
-The Fast-Craftsmanship CLI includes a comprehensive Terminal User Interface (TUI) that provides an interactive way to navigate and use all available commands.
+The Fast-Craftsmanship CLI includes an interactive Terminal User Interface (TUI) that provides a user-friendly way to navigate and use all available commands.
 
 ### Launching the TUI
 
-The TUI can be launched in two ways:
+The TUI can be launched with:
 
 ```bash
-# Using the dedicated menu command
-craftsmanship menu
+# Using the menu command
+python -m fcship.cli menu
 
-# Using the --tui flag
-craftsmanship --tui
+# From the Makefile
+make tui
 ```
 
 ### TUI Features
 
-- **Category-based Navigation**: Browse commands organized by categories
-- **Interactive Selection**: Select commands and options with keyboard input
-- **Command Help**: View detailed help for any command
-- **Command Execution**: Run commands directly from the TUI
+- **Category-based Navigation**: Commands are organized into logical categories for easy navigation
+- **Interactive Selection**: Select commands and options with simple keyboard input
+- **Command Help**: View detailed help for any available command
+- **Command Execution**: Run commands directly from the TUI with interactive input
+- **Keyboard Navigation**: Use keyboard shortcuts for quick navigation (b for back, q for quit)
+- **Context-aware Display**: See relevant information for each command
+- **Error Handling**: Graceful error handling for command execution failures
 
 ### TUI Structure
 
 The TUI provides a three-level navigation structure:
 
-1. **Category Selection**: Choose from available command categories
+1. **Category Selection**: Choose from available command categories (scaffold, vcs, quality, db)
 2. **Command Selection**: Select a specific command within the chosen category
 3. **Command Options**: Run the command or view its help information
 
-### Implementation
+### Implementation Details
 
 The TUI is implemented using the Rich library for Python:
 
 ```python
-from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Prompt
-from rich.table import Table
+# Main TUI components
+def run_tui() -> None:
+    """Run the Terminal UI application."""
+    try:
+        while True:
+            # Display categories and get selection
+            valid_categories = display_categories()
+            choice = Prompt.ask("> ", choices=["q"] + [str(i) for i in range(1, len(valid_categories) + 1)])
+            
+            if choice.lower() == 'q':
+                break
+                
+            # Handle category, command, and option selection
+            # [implementation details]
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]Menu interrupted. Exiting...[/bold yellow]")
+    finally:
+        clear_screen()
+        console.print("[bold green]Thanks for using Fast-Craftsmanship CLI![/bold green]")
+```
 
-# Display categories menu
+### Menu Navigation Functions
+
+The TUI implementation includes several key functions:
+
+```python
+# Display available categories
 def display_categories():
     """Display the available command categories."""
     # Implementation using Rich tables and panels
@@ -371,23 +384,57 @@ def display_commands(category_id: str):
     """Display the commands for a specific category."""
     # Implementation using Rich tables
     
-# Display options for a specific command
+# Display options for a command
 def display_command_options(category_id: str, command_name: str):
     """Display options for a specific command."""
     # Implementation using Rich panels and tables
+    
+# Execute commands
+def run_command(command_name: str, show_help: bool = False):
+    """Run a command or show its help."""
+    # Implementation using subprocess
 ```
+
+### Command Execution
+
+Commands are executed using Python's subprocess module to maintain interactive capabilities:
+
+```python
+def run_command(command_name: str, show_help: bool = False):
+    """Run a command or show its help."""
+    cmd = ["python", "-m", "fcship.cli", command_name, "--help" if show_help else ""]
+    
+    try:
+        # Use subprocess.Popen to maintain interactive capabilities
+        process = subprocess.Popen(cmd)
+        process.wait()
+        
+        # Handle command completion or failure
+        if process.returncode == 0:
+            console.print("\n[bold green]Command completed successfully.[/bold green]")
+        else:
+            console.print(f"\n[bold red]Command failed with exit code {process.returncode}[/bold red]")
+    except Exception as e:
+        console.print(f"\n[bold red]Error: {e}[/bold red]")
+```
+
+### Example Usage Flow
+
+A typical user interaction flow:
+
+1. Launch the TUI with `python -m fcship.cli menu`
+2. View the available categories and select one (e.g., "scaffold")
+3. View commands in the selected category and choose one (e.g., "project")
+4. Choose to either run the command or view its help
+5. If running the command, interact with it directly
+6. After command execution, return to the command options menu
+7. Navigate back to previous menus or quit the TUI
 
 ### Batch Operations with Progress
 
-When processing multiple items with progress tracking:
+For commands that process multiple items with progress tracking:
 
 ```python
-from typing import TypeVar, Callable
-from expression.collections import Block
-
-T = TypeVar('T')
-U = TypeVar('U')
-
 def batch_process[T, U](
     items: Block[T],
     process_fn: Callable[[T], Result[U, DisplayError]],
@@ -531,7 +578,7 @@ def display_custom(
 ```python
 @tagged_union
 class CustomDisplayError(DisplayError):
-    tag: Literal["validation", "rendering", "interaction", "custom"]
+    tag: Literal["validation", "rendering", "interaction", "timeout", "execution", "input", "custom"]
     custom: str | None = None
 
     @staticmethod
@@ -570,4 +617,13 @@ def with_recovery[T](operation: Callable[[], Result[T, DisplayError]]) -> Result
     return recover_ui(operation, strategies)
 ```
 
-// ...rest of existing documentation...
+## Future Improvements
+
+1. **Keyboard Shortcuts**: Add more keyboard shortcuts for faster navigation
+2. **Theming Support**: Allow users to customize the TUI appearance
+3. **Command History**: Implement command history tracking
+4. **Parameter Input**: Add interactive parameter input for commands
+5. **Persistent Settings**: Save user preferences between sessions
+6. **Help Context**: Show command help inline for better usability
+7. **Auto-complete**: Add tab completion for command names and parameters
+8. **Filter Options**: Allow filtering command lists by keyword
