@@ -815,11 +815,10 @@ def cli_setup_workflows(
     release: bool = typer.Option(True, help="Set up release workflow"),
     version_bump: bool = typer.Option(True, help="Set up version bump workflow"),
     deploy: bool = typer.Option(False, help="Set up deployment workflow"),
-    codeql: bool = typer.Option(False, help="Set up CodeQL analysis"),
     dependabot: bool = typer.Option(True, help="Set up Dependabot"),
 ):
     """Set up GitHub Actions workflows."""
-    for step in setup_workflows(repo_name, ci, release, version_bump, deploy, codeql, dependabot):
+    for step in setup_workflows(repo_name, ci, release, version_bump, deploy, dependabot):
         result = step
 
     if result.is_error():

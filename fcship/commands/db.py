@@ -46,9 +46,17 @@ class DbError:
 def run_command(command: list[str], status_message: str, console: Console):
     """Run a shell command and return its result."""
     try:
+        # Surround only the subprocess.run call in the try-except block
         with console.status(status_message):
-            process = subprocess.run(command, capture_output=True, text=True, check=False)
+            try:
+                process = subprocess.run(command, capture_output=True, text=True, check=False)
+            except Exception as e:
+                # Immediately handle the exception from subprocess.run
+                error_msg = str(e)
+                yield Error(DbError.MigrationError(" ".join(command), error_msg))
+                return
 
+        # If we're here, process ran successfully (though it might have non-zero return code)
         output = CommandOutput(
             stdout=process.stdout, stderr=process.stderr, returncode=process.returncode
         )
@@ -62,7 +70,10 @@ def run_command(command: list[str], status_message: str, console: Console):
 
         yield Ok(output)
     except Exception as e:
-        yield Error(DbError.MigrationError(" ".join(command), str(e)))
+        # This is for any other unexpected exceptions
+        error_msg = f"Unexpected error: {str(e)}"
+        yield Error(DbError.MigrationError(" ".join(command), error_msg))
+        return
 
 
 @effect.result[str, DbError]()
@@ -77,6 +88,11 @@ def create_migration(name: str, ctx: DisplayContext = None):
         display_ctx.console,
     )
 
+    # Handle the result - ensure we have a valid result
+    if result is None:
+        yield Error(DbError.MigrationError("alembic revision", "Command execution failed"))
+        return
+
     if result.is_ok():
         output = result.ok
         # Display output
@@ -87,8 +103,10 @@ def create_migration(name: str, ctx: DisplayContext = None):
         # Success message
         yield from success_message(display_ctx, f"Created migration: {name}")
         yield Ok(f"Migration '{name}' created successfully")
-
-    return Error(result.error)
+        return
+    
+    # If we get here, there was an error
+    yield Error(result.error)
 
 
 @effect.result[str, DbError]()
@@ -101,6 +119,11 @@ def run_migrations(ctx: DisplayContext = None):
         ["alembic", "upgrade", "head"], "[bold green]Applying migrations...", display_ctx.console
     )
 
+    # Handle the result - ensure we have a valid result
+    if result is None:
+        yield Error(DbError.MigrationError("alembic upgrade", "Command execution failed"))
+        return
+
     if result.is_ok():
         output = result.ok
         # Display output
@@ -111,8 +134,10 @@ def run_migrations(ctx: DisplayContext = None):
         # Success message
         yield from success_message(display_ctx, "Migrations applied successfully")
         yield Ok("Migrations applied successfully")
-
-    return Error(result.error)
+        return
+    
+    # If we get here, there was an error
+    yield Error(result.error)
 
 
 @effect.result[str, DbError]()
@@ -127,6 +152,11 @@ def rollback_migration(ctx: DisplayContext = None):
         display_ctx.console,
     )
 
+    # Handle the result - ensure we have a valid result
+    if result is None:
+        yield Error(DbError.MigrationError("alembic downgrade", "Command execution failed"))
+        return
+
     if result.is_ok():
         output = result.ok
         # Display output
@@ -137,8 +167,10 @@ def rollback_migration(ctx: DisplayContext = None):
         # Success message
         yield from success_message(display_ctx, "Migration rolled back successfully")
         yield Ok("Migration rolled back successfully")
-
-    return Error(result.error)
+        return
+    
+    # If we get here, there was an error
+    yield Error(result.error)
 
 
 @effect.result[tuple[str, str | None], DbError]()

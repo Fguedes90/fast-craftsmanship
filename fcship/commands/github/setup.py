@@ -217,14 +217,13 @@ def setup_workflows(
     release: Annotated[bool, typer.Option(help="Set up release workflow")] = True,
     version_bump: Annotated[bool, typer.Option(help="Set up version bump workflow")] = True,
     deploy: Annotated[bool, typer.Option(help="Set up deployment workflow")] = False,
-    codeql: Annotated[bool, typer.Option(help="Set up CodeQL analysis")] = False,
     dependabot: Annotated[bool, typer.Option(help="Set up Dependabot")] = True,
 ):
     """Set up GitHub Actions workflows."""
 
     display_ctx = DisplayContext(console=Console())
     result = pipe(
-        _setup_github_workflows(repo_name, ci, release, version_bump, deploy, codeql, dependabot),
+        _setup_github_workflows(repo_name, ci, release, version_bump, deploy, dependabot),
         lambda _: display_success(display_ctx, f"Workflows set up for {repo_name}"),
     )
 
@@ -238,7 +237,6 @@ def _setup_github_workflows(
     release: bool,
     version_bump: bool,
     deploy: bool,
-    codeql: bool,
     dependabot: bool,
 ) -> Result[str, str]:
     """Set up GitHub Actions workflows."""
@@ -252,8 +250,6 @@ def _setup_github_workflows(
         workflows.append("bump-version.yml")
     if deploy:
         workflows.append("deploy.yml")
-    if codeql:
-        workflows.append("codeql-analysis.yml")
     if dependabot:
         workflows.append("dependabot.yml")
 
@@ -344,7 +340,6 @@ def setup_all(
         release=True,
         version_bump=True,
         deploy=len(deployment_environments) > 0,
-        codeql=True,
         dependabot=True,
     )
     
