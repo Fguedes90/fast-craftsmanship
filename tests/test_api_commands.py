@@ -67,24 +67,21 @@ def cleanup_test_directories():
 
 def test_create_api_success():
     """Test successful API creation"""
-    try:
-        @effect.result[None, str]()
-        def test_impl():
-            result = yield from create_api("test_endpoint")
-            assert result.is_ok()
-            assert "Created API endpoint test_endpoint" in result.ok
-            # Check if files were created
-            api_file = Path("api/v1/test_endpoint.py")
-            schema_file = Path("api/schemas/test_endpoint.py")
-            test_file = Path("tests/api/test_test_endpoint.py")
-            assert api_file.exists()
-            assert schema_file.exists()
-            assert test_file.exists()
-            yield Ok(None)
-        
-        run_effect(test_impl)
-    finally:
-        cleanup_api_files("test_endpoint")
+    @effect.result[None, str]()
+    def run_test():
+        result = yield from create_api("test_endpoint")
+        assert result.is_ok()
+        assert "Created API endpoint test_endpoint" in result.ok
+        # Check if files were created
+        api_file = Path("api/v1/test_endpoint.py")
+        schema_file = Path("api/schemas/test_endpoint.py")
+        test_file = Path("tests/api/test_test_endpoint.py")
+        assert api_file.exists()
+        assert schema_file.exists()
+        assert test_file.exists()
+    
+    run_test()
+    cleanup_api_files("test_endpoint")
 
 def test_create_api_invalid_name():
     """Test API creation with invalid name"""
