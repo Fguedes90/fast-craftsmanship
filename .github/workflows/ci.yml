@@ -24,7 +24,7 @@ jobs:
           uv pip install --system -e ".[dev]"
       - name: Lint with ruff
         run: |
-          ruff check fcship/
+          python -m ruff check fcship/
       - name: Test with pytest
         run: |
           pytest tests/ --cov=fcship --cov-report=xml
