@@ -5,6 +5,7 @@ from expression import Result, Ok, Error
 from expression.core import Ok as OkType, Error as ErrorType
 from . import __version__
 from .commands import COMMANDS
+from .commands.github.cli import github_app
 # from .commands.api import api
 # from .commands.domain import domain
 # from .commands.service import service
@@ -79,6 +80,9 @@ for cmd_name, (cmd_func, help_text) in COMMANDS.items():
     wrapped.__name__ = cmd_func.__name__
     wrapped.__doc__ = cmd_func.__doc__
     app.command(name=cmd_name, help=help_text)(wrapped)
+
+# Add the GitHub commands
+app.add_typer(github_app)
 
 def main() -> None:
     """CLI entry point."""

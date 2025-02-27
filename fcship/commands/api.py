@@ -70,7 +70,7 @@ def ensure_api_directories():
         console.print("[blue]Debug: Creating directories:[/blue]")
         for directory in directories:
             console.print(f"[blue]  - {directory}[/blue]")
-            result = yield from ensure_directory(directory)
+            result = ensure_directory(directory)
             if result.is_error():
                 yield Error(f"Failed to create API directories: {result.error}")
                 return

@@ -42,18 +42,16 @@ class FileOperation:
 
 
 
-@effect.result[None, FileError]()
-def ensure_directory(path: Path):
+def ensure_directory(path: Path) -> Result[None, FileError]:
     """Ensure directory exists."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        yield Ok(None)
+        return Ok(None)
     except Exception as e:
-        yield Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
+        return Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
 
 
-@effect.result[None, FileError]()
-def write_file(path: Path, content: str):
+def write_file(path: Path, content: str) -> Result[None, FileError]:
     """Write content to file."""
     # Ensure parent directory exists
     try:
@@ -85,14 +83,14 @@ def create_single_file(tracker, path_content: FileContent):
     
     if isinstance(tracker, Path):
         file_path = rel_path if rel_path.is_absolute() else tracker / rel_path
-        write_result = yield from write_file(file_path, content)
+        write_result = write_file(file_path, content)
         if write_result.is_error():
             yield Error(write_result.error)
             return
         yield Ok(FileOperation(file_path, content))
     elif isinstance(tracker, FileCreationTracker):
         # Create the file
-        write_result = yield from write_file(rel_path, content)
+        write_result = write_file(rel_path, content)
         if write_result.is_error():
             yield Error(write_result.error)
             return

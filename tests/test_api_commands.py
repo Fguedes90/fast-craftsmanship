@@ -174,9 +174,9 @@ def test_create_api_prepare_error(mocker):
 def test_ensure_directories_error(mocker):
     """Test error handling when creating directories fails"""
     try:
-        @effect.result[None, str]()
+        # Use a regular function since ensure_directory is now a regular function
         def mock_ensure_directory(path: Path):
-            yield Error(str(FileError("Failed to create directory", str(path))))
+            return Error(str(FileError("Failed to create directory", str(path))))
 
         mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
 
@@ -306,9 +306,9 @@ def test_prepare_api_files_unexpected_error(mocker):
 def test_ensure_directories_unexpected_error(mocker):
     """Test ensure_api_directories with unexpected error"""
     try:
-        @effect.result[None, str]()
+        # Use a regular function since ensure_directory is now a regular function
         def mock_ensure_directory(path: Path):
-            yield Error(str(FileError("Failed to create directory", str(path))))
+            return Error(str(FileError("Failed to create directory", str(path))))
 
         mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
 
@@ -325,9 +325,9 @@ def test_ensure_directories_unexpected_error(mocker):
 
 def test_create_files_unexpected_error(mocker):
     """Test create_api_files with unexpected error"""
-    @effect.result[None, str]()
+    # Use a regular function for ensure_directory now
     def mock_ensure_directory(path: Path):
-        yield Ok(None)
+        return Ok(None)
 
     @effect.result[FileCreationTracker, str]()
     def mock_create_single_file(tracker, path_content: tuple[Path, str]):
@@ -386,12 +386,11 @@ def test_api_unexpected_error_in_create(mocker):
 def test_ensure_directories_general_error(mocker):
     """Test ensure_api_directories with a general exception"""
     try:
-        @effect.result[None, str]()
+        # Use a regular function since ensure_directory is now a regular function
         def mock_ensure_directory(path: Path):
             if str(path) == "api/v1":  # Trigger error on specific directory
-                yield Error("General directory error")
-                return
-            yield Ok(None)
+                return Error("General directory error")
+            return Ok(None)
 
         mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
 
@@ -410,9 +409,9 @@ def test_ensure_directories_general_error(mocker):
 def test_create_files_general_error(mocker):
     """Test create_api_files with a general exception"""
     try:
-        @effect.result[None, str]()
+        # Use a regular function for ensure_directory now
         def mock_ensure_directory(path: Path):
-            yield Ok(None)
+            return Ok(None)
 
         @effect.result[FileCreationTracker, str]()
         def mock_create_single_file(tracker, path_content: tuple[Path, str]):

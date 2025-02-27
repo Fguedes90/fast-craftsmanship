@@ -10,6 +10,7 @@ from .project import project
 from .db import db
 from .verify import verify
 from .commit.commit import commit
+from .github.cli import github_app
 
 # Command function type hint
 CommandFunction = Callable[..., Any]
@@ -37,5 +38,6 @@ __all__ = [
     "project",
     "db",
     "verify",
-    "commit"
+    "commit",
+    "github_app"
 ]
