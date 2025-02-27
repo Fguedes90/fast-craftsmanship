@@ -44,80 +44,92 @@ def input_context(mock_input_handler):
 def error_context(error_input_handler):
     return InputContext(input_handler=error_input_handler)
 
-@effect.result[str, DisplayError]()
 def test_get_user_input_success(monkeypatch):
     """Test successful user input"""
     def mock_input(*args):
         return "mock_input"
     monkeypatch.setattr('typer.prompt', mock_input)
     
-    result = yield from get_user_input("Test prompt")
-    assert result.is_ok()
-    assert result.ok == "mock_input"
-    yield Ok(None)
+    @effect.result[str, DisplayError]()
+    def run_test():
+        result = yield from get_user_input("Test prompt")
+        assert result.is_ok()
+        assert result.ok == "mock_input"
 
-@effect.result[str, DisplayError]()
+    run_test()
+
 def test_get_user_input_error(monkeypatch):
     """Test user input error handling"""
     def mock_input(*args):
         raise ValueError("Mock input error")
     monkeypatch.setattr('typer.prompt', mock_input)
     
-    result = yield from get_user_input("Test prompt")
-    assert result.is_error()
-    assert result.error.tag == "input"
-    assert "Mock input error" in str(result.error)
-    yield Ok(None)
+    @effect.result[str, DisplayError]()
+    def run_test():
+        result = yield from get_user_input("Test prompt")
+        assert result.is_error()
+        assert result.error.tag == "input"
+        assert "Mock input error" in str(result.error)
 
-@effect.result[str, DisplayError]()
+    run_test()
+
 def test_prompt_for_input_valid(monkeypatch):
     """Test valid input validation"""
     def mock_input(*args):
         return "mock_input"
     monkeypatch.setattr('typer.prompt', mock_input)
     
-    result = yield from prompt_for_input("Test prompt", lambda x: True)
-    assert result.is_ok()
-    assert result.ok == "mock_input"
-    yield Ok(None)
+    @effect.result[str, DisplayError]()
+    def run_test():
+        result = yield from prompt_for_input("Test prompt", lambda x: True)
+        assert result.is_ok()
+        assert result.ok == "mock_input"
+    
+    run_test()
 
-@effect.result[str, DisplayError]()
 def test_prompt_for_input_invalid(monkeypatch):
     """Test invalid input validation"""
     def mock_input(*args):
         return "invalid"
     monkeypatch.setattr('typer.prompt', mock_input)
     
-    result = yield from prompt_for_input("Test prompt", lambda x: False)
-    assert result.is_error()
-    assert result.error.tag == "validation"
-    assert "Invalid input" in str(result.error)
-    yield Ok(None)
+    @effect.result[bool, DisplayError]()
+    def run_test():
+        result = yield from prompt_for_input("Test prompt", lambda x: False)
+        assert result.is_error()
+        assert result.error.tag == "validation"
+        assert "Invalid input" in str(result.error)
+    
+    run_test()
 
-@effect.result[bool, DisplayError]()
 def test_get_confirmation_success(monkeypatch):
     """Test successful confirmation"""
     def mock_confirm(*args):
         return True
     monkeypatch.setattr('typer.confirm', mock_confirm)
-    
-    result = yield from get_confirmation("Test prompt")
-    assert result.is_ok()
-    assert result.ok is True
-    yield Ok(None)
 
-@effect.result[bool, DisplayError]()
+    @effect.result[bool, DisplayError]()
+    def run_test():
+        result = yield from get_confirmation("Test prompt")
+        assert result.is_ok()
+        assert result.ok is True
+    
+    run_test()
+
 def test_get_confirmation_error(monkeypatch):
     """Test confirmation error handling"""
     def mock_confirm(*args):
         raise ValueError("Mock confirmation error")
     monkeypatch.setattr('typer.confirm', mock_confirm)
     
-    result = yield from get_confirmation("Test prompt")
-    assert result.is_error()
-    assert result.error.tag == "input"
-    assert "Mock confirmation error" in str(result.error)
-    yield Ok(None)
+    @effect.result[None, DisplayError]()
+    def run_test():
+        result = yield from get_confirmation("Test prompt")
+        assert result.is_error()
+        assert result.error.tag == "input"
+        assert "Mock confirmation error" in str(result.error)
+    
+    run_test()
 
 def test_typer_input_handler():
     """Test typer input handler"""

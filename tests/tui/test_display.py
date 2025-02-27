@@ -1,6 +1,5 @@
-from typing import List, Tuple
 import pytest
-from expression import Ok, Error, Result, effect
+from expression import Ok, Error, effect
 from rich.console import Console
 from hypothesis import given, strategies as st, settings, HealthCheck
 from fcship.tui.display import (
@@ -14,19 +13,16 @@ from fcship.tui.display import (
     validate_batch_messages,
     print_styled,
     print_rule,
-    display_message,
     success_message,
     error_message,
     warning_message,
     display_rule,
-    create_display_message,
     process_messages,
     batch_display_messages,
     display_indented_text,
     handle_display
 )
 from unittest.mock import patch
-from unittest.mock import Mock
 
 # Test data
 VALID_MESSAGE = "Test message"
@@ -91,15 +87,20 @@ def test_display_message_properties(content, style, indent_level):
         max_size=10
     )
 )
-@settings(suppress_health_check=[HealthCheck.return_value])
-@effect.result[None, DisplayError]()
+@settings(suppress_health_check=[])
 def test_batch_messages_properties(messages):
     """Test that valid BatchMessages combinations work correctly."""
     batch = BatchMessages(messages=messages)
-    result = yield from validate_batch_messages(batch)
-    assert result.is_ok()
-    assert isinstance(result.ok, BatchMessages)
-    assert result.ok.messages == messages
+    
+    @effect.result[None, DisplayError]()
+    def run_test():
+        result = yield from validate_batch_messages(batch)
+        assert result.is_ok()
+        assert isinstance(result.ok, BatchMessages)
+        assert result.ok.messages == messages
+    
+    # Execute the effect computation
+    run_test()
 
 @given(
     content=st.text(min_size=1).filter(lambda x: bool(x.strip())),

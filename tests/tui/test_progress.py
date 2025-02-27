@@ -57,128 +57,140 @@ def test_create_progress_error():
     assert result.is_error()
     assert result.error.tag == "validation"
 
-@effect.result[None, ProgressError]()
 def test_display_progress_validation():
     """Test input validation for display_progress"""
-    def mock_process(x: Any) -> Generator[Any, Any, Result[Any, Any]]:
-        yield from []
-        return Ok(x)
+    @effect.result[None, ProgressError]()
+    def run_test():
+        def mock_process(x: Any) -> Generator[Any, Any, Result[Any, Any]]:
+            yield from []
+            return Ok(x)
 
-    # Test with empty items list
-    result = yield from display_progress([], mock_process, "Test")
-    assert result.is_error()
-    assert isinstance(result.error, ProgressError)
-    assert result.error.tag == "validation"
+        # Test with empty items list
+        result = yield from display_progress([], mock_process, "Test")
+        assert result.is_error()
+        assert isinstance(result.error, ProgressError)
+        assert result.error.tag == "validation"
 
-    # Test with None process function
-    result = yield from display_progress([1, 2, 3], None, "Test")  # type: ignore
-    assert result.is_error()
-    assert isinstance(result.error, ProgressError)
-    assert result.error.tag == "validation"
+        # Test with None process function
+        result = yield from display_progress([1, 2, 3], None, "Test")  # type: ignore
+        assert result.is_error()
+        assert isinstance(result.error, ProgressError)
+        assert result.error.tag == "validation"
 
-    # Test with empty description
-    result = yield from display_progress([1, 2, 3], mock_process, "")
-    assert result.is_error()
-    assert isinstance(result.error, ProgressError)
-    assert result.error.tag == "validation"
+        # Test with empty description
+        result = yield from display_progress([1, 2, 3], mock_process, "")
+        assert result.is_error()
+        assert isinstance(result.error, ProgressError)
+        assert result.error.tag == "validation"
+    run_test()
 
-@effect.result[None, ProgressError]()
 def test_display_progress_sequential():
     """Test sequential progress display"""
-    items = [1, 2, 3]
-    def process(x: int) -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Ok(x * 2)
+    @effect.result[None, ProgressError]()
+    def run_test():
+        items = [1, 2, 3]
+        def process(x: int) -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Ok(x * 2)
 
-    result = yield from display_progress(items, process, "Processing items")
-    assert result.is_ok()
+        result = yield from display_progress(items, process, "Processing items")
+        assert result.is_ok()
+    run_test()
 
-@effect.result[None, ProgressError]()
 def test_display_progress_parallel():
     """Test parallel progress display"""
-    items = [1, 2, 3]
-    def process(x: int) -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Ok(x * 2)
+    @effect.result[None, ProgressError]()
+    def run_test():
+        items = [1, 2, 3]
+        def process(x: int) -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Ok(x * 2)
 
-    result = yield from display_progress(
-        items, process, "Processing items", 
-        parallel=True, max_workers=2
-    )
-    assert result.is_ok()
+        result = yield from display_progress(
+            items, process, "Processing items", 
+            parallel=True, max_workers=2
+        )
+        assert result.is_ok()
+    run_test()
 
-@effect.result[None, ProgressError]()
 def test_safe_display_with_progress(sample_config):
     """Test safe progress display with error handling"""
-    items = [1, 2, 3]
+    @effect.result[None, ProgressError]()
+    def run_test():
+        items = [1, 2, 3]
 
-    # Test successful processing
-    def success_process(x: int) -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Ok(x)
+        # Test successful processing
+        def success_process(x: int) -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Ok(x)
 
-    # Successful case
-    config = sample_config.ok
-    progress = yield from create_progress(config)
-    context = yield from create_context(progress, items, success_process, "Success test")
-    result = yield from safe_display_with_progress(context)
-    assert result.is_ok()
+        # Successful case
+        config = sample_config.ok
+        progress = yield from create_progress(config)
+        context = yield from create_context(progress, items, success_process, "Success test")
+        result = yield from safe_display_with_progress(context)
+        assert result.is_ok()
 
-    # Test with failing process
-    def fail_process(x: int) -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Error("test error")
+        # Test with failing process
+        def fail_process(x: int) -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Error("test error")
 
-    # Failing case
-    progress = yield from create_progress(config)
-    context = yield from create_context(progress, items, fail_process, "Failure test")
-    result = yield from safe_display_with_progress(context)
-    assert result.is_error()
-    assert result.error.tag == "parallel"
+        # Failing case
+        progress = yield from create_progress(config)
+        context = yield from create_context(progress, items, fail_process, "Failure test")
+        result = yield from safe_display_with_progress(context)
+        assert result.is_error()
+        assert result.error.tag == "parallel"
+    run_test()
 
-@effect.result[int, ProgressError]()
 def test_run_with_timeout():
     """Test timeout functionality"""
-    # Test successful completion
-    def quick_task() -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Ok(42)
+    @effect.result[int, ProgressError]()
+    def run_test():
+        # Test successful completion
+        def quick_task() -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Ok(42)
 
-    result = yield from run_with_timeout(quick_task(), 1.0)
-    assert result.is_ok()
-    assert result.ok == 42
+        result = yield from run_with_timeout(quick_task(), 1.0)
+        assert result.is_ok()
+        assert result.ok == 42
 
-    # Test error
-    def error_task() -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        return Error("test error")
+        # Test error
+        def error_task() -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            return Error("test error")
 
-    result = yield from run_with_timeout(error_task(), 1.0)
-    assert result.is_error()
-    assert result.error.tag == "execution"
+        result = yield from run_with_timeout(error_task(), 1.0)
+        assert result.is_error()
+        assert result.error.tag == "execution"
+    run_test()
 
-@effect.result[None, ProgressError]()
 def test_display_progress_error_handling():
     """Test error handling in progress display"""
-    items = [1, 2, 3]
-    def error_process(x: int) -> Generator[Any, Any, Result[int, str]]:
-        yield from []
-        if x == 2:
-            return Error("test error")
-        return Ok(x)
+    @effect.result[None, ProgressError]()
+    def run_test():
+        items = [1, 2, 3]
+        def error_process(x: int) -> Generator[Any, Any, Result[int, str]]:
+            yield from []
+            if x == 2:
+                return Error("test error")
+            return Ok(x)
 
-    # Test sequential error handling
-    result = yield from display_progress(items, error_process, "Error test")
-    assert result.is_error()
-    assert result.error.tag == "parallel"
+        # Test sequential error handling
+        result = yield from display_progress(items, error_process, "Error test")
+        assert result.is_error()
+        assert result.error.tag == "parallel"
 
-    # Test parallel error handling
-    result = yield from display_progress(
-        items, error_process, "Error test",
-        parallel=True, max_workers=2
-    )
-    assert result.is_error()
-    assert result.error.tag == "parallel"
+        # Test parallel error handling
+        result = yield from display_progress(
+            items, error_process, "Error test",
+            parallel=True, max_workers=2
+        )
+        assert result.is_error()
+        assert result.error.tag == "parallel"
+    run_test()
 
 def test_progress_error_creation():
     """Test ProgressError creation methods"""
