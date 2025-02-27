@@ -61,17 +61,18 @@ def write_file(path: Path, content: str):
         console.print(f"[blue]Debug: Created parent directory: {path.parent}[/blue]")
     except Exception as e:
         console.print(f"[red]Error creating directory {path.parent}: {str(e)}[/red]")
-        return Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
+        yield Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
+        return
 
     # Write file content
     try:
         console.print(f"[blue]Debug: Writing content to file: {path}[/blue]")
         path.write_text(content)
         console.print(f"[blue]Debug: Successfully wrote content to file: {path}[/blue]")
-        return Ok(None)
+        yield Ok(None)
     except Exception as e:
         console.print(f"[red]Error writing file {path}: {str(e)}[/red]")
-        return Error(FileError(f"Failed to write file: {path}", str(e)))
+        yield Error(FileError(f"Failed to write file: {path}", str(e)))
 
 
 @effect.result[FileCreationTracker, str]()
