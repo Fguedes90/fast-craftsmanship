@@ -320,6 +320,63 @@ def display_menu(options: dict[str, Callable[[], DisplayResult]]) -> DisplayResu
     )
 ```
 
+## Terminal UI (TUI)
+
+The Fast-Craftsmanship CLI includes a comprehensive Terminal User Interface (TUI) that provides an interactive way to navigate and use all available commands.
+
+### Launching the TUI
+
+The TUI can be launched in two ways:
+
+```bash
+# Using the dedicated menu command
+craftsmanship menu
+
+# Using the --tui flag
+craftsmanship --tui
+```
+
+### TUI Features
+
+- **Category-based Navigation**: Browse commands organized by categories
+- **Interactive Selection**: Select commands and options with keyboard input
+- **Command Help**: View detailed help for any command
+- **Command Execution**: Run commands directly from the TUI
+
+### TUI Structure
+
+The TUI provides a three-level navigation structure:
+
+1. **Category Selection**: Choose from available command categories
+2. **Command Selection**: Select a specific command within the chosen category
+3. **Command Options**: Run the command or view its help information
+
+### Implementation
+
+The TUI is implemented using the Rich library for Python:
+
+```python
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.table import Table
+
+# Display categories menu
+def display_categories():
+    """Display the available command categories."""
+    # Implementation using Rich tables and panels
+    
+# Display commands within a category
+def display_commands(category_id: str):
+    """Display the commands for a specific category."""
+    # Implementation using Rich tables
+    
+# Display options for a specific command
+def display_command_options(category_id: str, command_name: str):
+    """Display options for a specific command."""
+    # Implementation using Rich panels and tables
+```
+
 ### Batch Operations with Progress
 
 When processing multiple items with progress tracking:
