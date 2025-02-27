@@ -1,4 +1,4 @@
-.PHONY: help test test-cov lint format clean install dev-install release-patch release-minor release-major semantic-release
+.PHONY: help test test-cov lint format clean install dev-install tui release-patch release-minor release-major semantic-release
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -35,6 +35,9 @@ dev-install:  ## Install the package with development dependencies
 
 docs:  ## Generate documentation (placeholder - add your documentation command)
 	@echo "Add your documentation generation command here"
+
+tui:  ## Launch the interactive Terminal UI
+	python -m fcship.cli menu
 
 release-patch:  ## Create a new patch release (0.0.x)
 	@echo "Creating a new patch release..."
