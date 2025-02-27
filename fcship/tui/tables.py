@@ -16,6 +16,7 @@ from fcship.tui.errors import DisplayError
 # Monkey patch MailboxProcessor.__init__ to use get_running_loop when possible
 original_init = OriginalMailboxProcessor.__init__
 
+
 @wraps(original_init)
 def patched_init(self, cancellation_token=None):
     self.cancellation_token = cancellation_token
@@ -25,6 +26,7 @@ def patched_init(self, cancellation_token=None):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
     self.messages = []
+
 
 OriginalMailboxProcessor.__init__ = patched_init
 
@@ -156,7 +158,7 @@ class DisplayMailbox:
         try:
             # Make sure this task never exits immediately for tests
             keepalive_timer = None
-            
+
             async def keep_worker_alive():
                 # This inner function helps keep the worker alive during tests
                 while True:
@@ -168,7 +170,7 @@ class DisplayMailbox:
                 keepalive_timer = loop.create_task(keep_worker_alive())
             except RuntimeError:
                 pass  # No event loop, this will be fine for real execution
-                
+
             # Process messages
             while True:
                 msg = await inbox.receive()
@@ -184,7 +186,7 @@ class DisplayMailbox:
                     msg.callback(Ok(None))
                 except Exception as e:
                     msg.callback(Error(DisplayError.Rendering("Failed to display table", e)))
-                    
+
         except asyncio.CancelledError:
             # Handle task cancellation gracefully
             if keepalive_timer and not keepalive_timer.done():
@@ -194,7 +196,7 @@ class DisplayMailbox:
             # Handle any unexpected errors in the worker
             if "msg" in locals() and hasattr(msg, "callback"):
                 msg.callback(Error(DisplayError.Rendering("Worker error", e)))
-            
+
             # Cancel keepalive timer if it exists
             if keepalive_timer and not keepalive_timer.done():
                 keepalive_timer.cancel()
@@ -221,22 +223,15 @@ class DisplayMailbox:
         if self._worker_task is not None:
             self._worker_task.cancel()
             # We can't await in a synchronous method, so we need to handle cleanup differently
-            # Create a new task that will await the cancelled task
+            # Clean up the worker task without creating a new task
             try:
-                loop = asyncio.get_running_loop()
-                
-                async def cleanup():
-                    try:
-                        if self._worker_task is not None:
-                            await self._worker_task
-                    except asyncio.CancelledError:
-                        pass
-                
-                loop.create_task(cleanup())
-            except RuntimeError:
-                # No event loop running
+                if self._worker_task is not None:
+                    # Just cancel and forget the task, no need to await it
+                    self._worker_task.cancel()
+            except Exception:
+                # Ignore any errors during cleanup
                 pass
-            
+
             self._worker_task = None
         self.mailbox = None
         self.started = False
@@ -289,6 +284,10 @@ def display_table(table: Table) -> Result[None, DisplayError]:
                 console.print(table)
                 yield Ok(None)
             except Exception as inner_e:
-                yield Error(DisplayError.Rendering(f"Failed to display table: {e}, fallback failed: {inner_e}", e))
+                yield Error(
+                    DisplayError.Rendering(
+                        f"Failed to display table: {e}, fallback failed: {inner_e}", e
+                    )
+                )
     except Exception as e:
         yield Error(DisplayError.Rendering("Failed to initialize display", e))

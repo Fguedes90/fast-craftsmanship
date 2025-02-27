@@ -162,9 +162,7 @@ def create_repo_files(ctx: RepoContext):
 
         yield Ok(tracker)
     except Exception as e:
-        yield Error(
-            RepoError.FileError("repository", f"Failed to create repository files: {e!s}")
-        )
+        yield Error(RepoError.FileError("repository", f"Failed to create repository files: {e!s}"))
 
 
 @effect.result[str, RepoError]()

@@ -187,8 +187,8 @@ class GitCommands:
                 status.added.append(file_status)
             elif index_status == "M" or work_tree_status == "M":
                 status.modified.append(file_status)
-            elif (
-                index_status == "D" or (work_tree_status == "D" and file_info not in renames.values())
+            elif index_status == "D" or (
+                work_tree_status == "D" and file_info not in renames.values()
             ):
                 status.deleted.append(file_status)
             elif index_status == "?" and work_tree_status == "?":

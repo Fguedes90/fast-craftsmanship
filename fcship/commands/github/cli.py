@@ -3,7 +3,7 @@
 import os
 
 from dataclasses import dataclass, field
-from typing import Literal, List, Optional
+from typing import Literal
 
 import typer
 
@@ -26,6 +26,14 @@ from fcship.commands.github.main import (
     list_workflow_runs,
     rerun_workflow,
     watch_workflow_run,
+)
+from fcship.commands.github.setup import (
+    init_repo as setup_init_repo,
+    protect_branch as setup_protect_branch,
+    setup_environments,
+    setup_secrets,
+    setup_workflows,
+    setup_all as setup_all_features,
 )
 from fcship.tui.display import DisplayContext, error_message
 
@@ -722,11 +730,17 @@ def cli_setup_init_repo(
     description: str = typer.Option("", help="Repository description"),
     private: bool = typer.Option(False, help="Whether the repository should be private"),
     auto_init: bool = typer.Option(True, help="Initialize with README, LICENSE, and .gitignore"),
-    license_template: Optional[str] = typer.Option("mit", help="License template to use (e.g., mit, apache-2.0)"),
-    gitignore_template: Optional[str] = typer.Option("Python", help="Gitignore template to use (e.g., Python, Node)"),
+    license_template: str | None = typer.Option(
+        "mit", help="License template to use (e.g., mit, apache-2.0)"
+    ),
+    gitignore_template: str | None = typer.Option(
+        "Python", help="Gitignore template to use (e.g., Python, Node)"
+    ),
 ):
     """Create a new GitHub repository with best practices."""
-    for step in init_repo(repo_name, description, private, auto_init, license_template, gitignore_template):
+    for step in setup_init_repo(
+        repo_name, description, private, auto_init, license_template, gitignore_template
+    ):
         result = step
 
     if result.is_error():
@@ -743,7 +757,9 @@ def cli_setup_protect_branch(
     require_signed_commits: bool = typer.Option(False, help="Require signed commits"),
 ):
     """Set up branch protection rules."""
-    for step in protect_branch(repo_name, branch_name, required_approvals, require_status_checks, require_signed_commits):
+    for step in setup_protect_branch(
+        repo_name, branch_name, required_approvals, require_status_checks, require_signed_commits
+    ):
         result = step
 
     if result.is_error():
@@ -772,7 +788,9 @@ def cli_setup_secrets(
 @setup_app.command("setup-environments")
 def cli_setup_environments(
     repo_name: str = typer.Argument(..., help="Name of the repository"),
-    environments: List[str] = typer.Option(["staging", "production"], help="Environments to set up"),
+    environments: list[str] = typer.Option(
+        ["staging", "production"], help="Environments to set up"
+    ),
     require_approvals: bool = typer.Option(True, help="Require approvals for deployments"),
 ):
     """Set up GitHub environments for deployments."""
@@ -808,13 +826,25 @@ def cli_setup_all(
     repo_name: str = typer.Argument(..., help="Name of the repository to set up"),
     description: str = typer.Option("", help="Repository description"),
     private: bool = typer.Option(False, help="Whether the repository should be private"),
-    license_template: Optional[str] = typer.Option("mit", help="License template to use (e.g., mit, apache-2.0)"),
+    license_template: str | None = typer.Option(
+        "mit", help="License template to use (e.g., mit, apache-2.0)"
+    ),
     setup_pypi: bool = typer.Option(True, help="Set up PyPI publishing"),
     setup_docker: bool = typer.Option(False, help="Set up Docker image publishing"),
-    deployment_environments: List[str] = typer.Option(["staging", "production"], help="Environments to set up"),
+    deployment_environments: list[str] = typer.Option(
+        ["staging", "production"], help="Environments to set up"
+    ),
 ):
     """Complete GitHub repository setup with best practices."""
-    for step in setup_all(repo_name, description, private, license_template, setup_pypi, setup_docker, deployment_environments):
+    for step in setup_all_features(
+        repo_name,
+        description,
+        private,
+        license_template,
+        setup_pypi,
+        setup_docker,
+        deployment_environments,
+    ):
         result = step
 
     if result.is_error():

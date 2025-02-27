@@ -184,9 +184,7 @@ def create_project_file(ctx: ProjectContext, file_path: str, content: str):
         yield Ok(FileCreationResult(path=full_path))
     except Exception as e:
         yield Error(
-            ProjectError.FileError(
-                str(ctx.root_path / file_path), f"Failed to write file: {e!s}"
-            )
+            ProjectError.FileError(str(ctx.root_path / file_path), f"Failed to write file: {e!s}")
         )
 
 

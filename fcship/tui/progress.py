@@ -8,12 +8,10 @@ from typing import Any, Generic, Literal, TypeVar
 
 # Set multiprocessing start method to 'spawn' to avoid fork-related warnings
 # Only set it if we're on Unix-like systems (not needed on Windows)
-if os.name != 'nt' and hasattr(multiprocessing, 'set_start_method'):
-    try:
-        multiprocessing.set_start_method('spawn', force=False)
-    except RuntimeError:
-        # Method may already be set, so we can ignore this error
-        pass
+if os.name != "nt" and hasattr(multiprocessing, "set_start_method"):
+    import contextlib
+    with contextlib.suppress(RuntimeError):
+        multiprocessing.set_start_method("spawn", force=False)
 
 from expression import Error, Ok, Result, case, curry, effect, pipe, tag, tagged_union
 from rich.progress import (

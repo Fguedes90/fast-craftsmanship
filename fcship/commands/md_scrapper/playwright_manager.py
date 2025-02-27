@@ -14,7 +14,7 @@ def check_playwright() -> Result[bool, Exception]:
     """Check if Playwright is installed."""
     try:
         import importlib.util
-        
+
         if importlib.util.find_spec("playwright") is not None:
             return Ok(True)
         return Ok(False)

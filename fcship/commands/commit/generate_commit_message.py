@@ -1,6 +1,5 @@
 """Generate commit messages based on file changes."""
 
-
 from .commit_types import COMMIT_TYPES
 
 

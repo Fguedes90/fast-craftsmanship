@@ -4,10 +4,8 @@ GitHub API utilities for repository and CI/CD setup.
 """
 
 import os
-import subprocess
-from typing import Dict, List, Optional, Any, Tuple
 
-from expression import effect, Ok, Error, Result
+from expression import Error, Ok, Result, effect
 from github import Github, Repository
 from github.GithubException import GithubException
 
@@ -23,16 +21,16 @@ def get_github_token() -> Result[str, str]:
     if token:
         yield Ok(token)
         return
-    
+
     # Ask user for token
     token = yield from get_password_input(
         "GitHub token not found in environment. Please enter your GitHub token: "
     )
-    
+
     if not token:
         yield Error("GitHub token is required")
         return
-    
+
     yield Ok(token)
     return
 
@@ -46,18 +44,18 @@ def get_github_client() -> Result[Github, str]:
     if token_result.is_error():
         yield Error(token_result.error)
         return
-    
+
     try:
         client = Github(token_result.value)
         # Test authentication
-        client.get_user().login
+        _ = client.get_user().login
         yield Ok(client)
         return
     except GithubException as e:
-        yield Error(f"GitHub authentication failed: {str(e)}")
+        yield Error(f"GitHub authentication failed: {e!s}")
         return
     except Exception as e:
-        yield Error(f"Failed to create GitHub client: {str(e)}")
+        yield Error(f"Failed to create GitHub client: {e!s}")
         return
 
 
@@ -67,8 +65,8 @@ def create_repository(
     description: str = "",
     private: bool = False,
     auto_init: bool = True,
-    license_template: Optional[str] = "mit",
-    gitignore_template: Optional[str] = "Python",
+    license_template: str | None = "mit",
+    gitignore_template: str | None = "Python",
 ) -> Result[Repository.Repository, str]:
     """
     Create a new GitHub repository.
@@ -77,10 +75,10 @@ def create_repository(
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
     user = client.get_user()
-    
+
     try:
         repo = user.create_repo(
             name=name,
@@ -88,15 +86,15 @@ def create_repository(
             private=private,
             auto_init=auto_init,
             license_template=license_template,
-            gitignore_template=gitignore_template
+            gitignore_template=gitignore_template,
         )
         yield Ok(repo)
         return
     except GithubException as e:
-        yield Error(f"Failed to create repository: {str(e)}")
+        yield Error(f"Failed to create repository: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
@@ -106,7 +104,7 @@ def set_branch_protection(
     branch_name: str = "main",
     required_approvals: int = 1,
     require_status_checks: bool = True,
-    status_checks: List[str] = None,
+    status_checks: list[str] = None,
     require_signed_commits: bool = False,
 ) -> Result[str, str]:
     """
@@ -116,14 +114,14 @@ def set_branch_protection(
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
-    
+
     try:
         user = client.get_user().login
         repo = client.get_repo(f"{user}/{repo_name}")
         branch = repo.get_branch(branch_name)
-        
+
         # Configure protection settings
         branch.edit_protection(
             required_approving_review_count=required_approvals,
@@ -134,16 +132,16 @@ def set_branch_protection(
             allow_force_pushes=False,
             allow_deletions=False,
             require_signed_commits=require_signed_commits,
-            required_status_checks=status_checks or []
+            required_status_checks=status_checks or [],
         )
-        
+
         yield Ok(f"Branch protection set for {branch_name}")
         return
     except GithubException as e:
-        yield Error(f"Failed to set branch protection: {str(e)}")
+        yield Error(f"Failed to set branch protection: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
@@ -160,23 +158,23 @@ def setup_repository_secret(
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
-    
+
     try:
         user = client.get_user().login
         repo = client.get_repo(f"{user}/{repo_name}")
-        
+
         # Create or update secret
         repo.create_secret(secret_name, secret_value)
-        
+
         yield Ok(f"Secret {secret_name} created/updated")
         return
     except GithubException as e:
-        yield Error(f"Failed to set secret: {str(e)}")
+        yield Error(f"Failed to set secret: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
@@ -185,7 +183,7 @@ def setup_environment(
     repo_name: str,
     environment_name: str,
     require_approvals: bool = True,
-    required_reviewers: List[str] = None,
+    required_reviewers: list[str] = None,
 ) -> Result[str, str]:
     """
     Set up a deployment environment.
@@ -194,28 +192,28 @@ def setup_environment(
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
-    
+
     try:
         user = client.get_user().login
         repo = client.get_repo(f"{user}/{repo_name}")
-        
+
         # Create environment
         environment = repo.create_environment(environment_name)
-        
+
         # Configure environment protection rules
         if require_approvals:
             reviewers = required_reviewers or [user]
             environment.protection_rules.set_required_reviewers(reviewers)
-        
+
         yield Ok(f"Environment {environment_name} created")
         return
     except GithubException as e:
-        yield Error(f"Failed to set up environment: {str(e)}")
+        yield Error(f"Failed to set up environment: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
@@ -232,16 +230,16 @@ def create_workflow_file(
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
-    
+
     try:
         user = client.get_user().login
         repo = client.get_repo(f"{user}/{repo_name}")
-        
+
         # Create workflow file path
         file_path = f".github/workflows/{workflow_name}"
-        
+
         # Create or update the workflow file
         try:
             # Try to get the file to check if it exists
@@ -250,37 +248,35 @@ def create_workflow_file(
                 path=file_path,
                 message=f"Update {workflow_name} workflow",
                 content=workflow_content,
-                sha=existing_file.sha
+                sha=existing_file.sha,
             )
         except GithubException:
             # File doesn't exist, create it
             repo.create_file(
-                path=file_path,
-                message=f"Create {workflow_name} workflow",
-                content=workflow_content
+                path=file_path, message=f"Create {workflow_name} workflow", content=workflow_content
             )
-        
+
         yield Ok(f"Workflow file {workflow_name} created/updated")
         return
     except GithubException as e:
-        yield Error(f"Failed to create workflow file: {str(e)}")
+        yield Error(f"Failed to create workflow file: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
 @effect.result
 def create_dependabot_config(
     repo_name: str,
-    package_managers: List[str] = None,
+    package_managers: list[str] = None,
 ) -> Result[str, str]:
     """
     Create Dependabot configuration file.
     """
     if not package_managers:
         package_managers = ["pip"]
-    
+
     config_content = """
 version: 2
 updates:
@@ -298,16 +294,16 @@ updates:
     if client_result.is_error():
         yield Error(client_result.error)
         return
-    
+
     client = client_result.value
-    
+
     try:
         user = client.get_user().login
         repo = client.get_repo(f"{user}/{repo_name}")
-        
+
         # Create dependabot config file path
         file_path = ".github/dependabot.yml"
-        
+
         # Create or update the dependabot config file
         try:
             # Try to get the file to check if it exists
@@ -316,39 +312,37 @@ updates:
                 path=file_path,
                 message="Update dependabot configuration",
                 content=config_content,
-                sha=existing_file.sha
+                sha=existing_file.sha,
             )
         except GithubException:
             # File doesn't exist, create it
             repo.create_file(
-                path=file_path,
-                message="Create dependabot configuration",
-                content=config_content
+                path=file_path, message="Create dependabot configuration", content=config_content
             )
-        
+
         yield Ok("Dependabot configuration created/updated")
         return
     except GithubException as e:
-        yield Error(f"Failed to create dependabot configuration: {str(e)}")
+        yield Error(f"Failed to create dependabot configuration: {e!s}")
         return
     except Exception as e:
-        yield Error(f"An error occurred: {str(e)}")
+        yield Error(f"An error occurred: {e!s}")
         return
 
 
 @effect.result
 def setup_codeql_analysis(
     repo_name: str,
-    languages: List[str] = None,
+    languages: list[str] = None,
 ) -> Result[str, str]:
     """
     Set up CodeQL analysis workflow.
     """
     if not languages:
         languages = ["python"]
-    
+
     languages_str = ", ".join([f"'{lang}'" for lang in languages])
-    
+
     workflow_content = f"""name: "CodeQL"
 
 on:
@@ -388,18 +382,18 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
 """
-    
+
     result = yield from create_workflow_file(repo_name, "codeql-analysis.yml", workflow_content)
     if result.is_error():
         yield Error(result.error)
         return
-    
+
     yield Ok("CodeQL analysis workflow created")
     return
 
 
 @effect.result
-def setup_workflow_templates(repo_name: str) -> Result[Dict[str, bool], str]:
+def setup_workflow_templates(repo_name: str) -> Result[dict[str, bool], str]:
     """
     Set up common workflow files from templates.
     """
@@ -408,7 +402,7 @@ def setup_workflow_templates(repo_name: str) -> Result[Dict[str, bool], str]:
         "release.yml": False,
         "bump-version.yml": False,
     }
-    
+
     # CI workflow
     ci_workflow = """name: CI
 
@@ -444,11 +438,11 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
 """
-    
+
     ci_result = yield from create_workflow_file(repo_name, "ci.yml", ci_workflow)
     if ci_result.is_ok():
         result["ci.yml"] = True
-    
+
     # Release workflow
     release_workflow = """name: Release
 
@@ -502,11 +496,11 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 """
-    
+
     release_result = yield from create_workflow_file(repo_name, "release.yml", release_workflow)
     if release_result.is_ok():
         result["release.yml"] = True
-    
+
     # Version bump workflow
     bump_workflow = """name: Bump Version
 
@@ -552,7 +546,7 @@ jobs:
       - name: Extract current version
         id: get_version
         run: |
-          CURRENT_VERSION=$(grep -m 1 -oP 'version = "\K[^"]+' pyproject.toml)
+          CURRENT_VERSION=$(grep -m 1 -oP 'version = "\\K[^"]+' pyproject.toml)
           echo "Current version: $CURRENT_VERSION"
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
       
@@ -595,10 +589,10 @@ jobs:
           git tag -a "v${{ steps.bump_version.outputs.new_version }}" -m "Release v${{ steps.bump_version.outputs.new_version }}"
           git push --tags
 """
-    
+
     bump_result = yield from create_workflow_file(repo_name, "bump-version.yml", bump_workflow)
     if bump_result.is_ok():
         result["bump-version.yml"] = True
-    
+
     yield Ok(result)
     return

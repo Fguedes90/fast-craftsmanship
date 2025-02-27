@@ -141,9 +141,7 @@ def create_domain_file(domain_name: str, file_path: str, content: str):
         yield Ok(full_path)
     except Exception as e:
         yield Error(
-            DomainError.FileError(
-                f"domain/{domain_name}/{file_path}", f"Unexpected error: {e!s}"
-            )
+            DomainError.FileError(f"domain/{domain_name}/{file_path}", f"Unexpected error: {e!s}")
         )
 
 

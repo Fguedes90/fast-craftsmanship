@@ -81,8 +81,6 @@ def tap_async(fn: Callable[[A], Awaitable[Any]]) -> Callable[[A], Awaitable[A]]:
     return tapped
 
 
-
-
 def option_to_result(opt: Option[A], error_msg: str) -> Result[A, Exception]:
     """
     Converte uma instância de Option em um Result.
