@@ -29,11 +29,17 @@ from fcship.commands.github.main import (
 )
 from fcship.commands.github.setup import (
     init_repo as setup_init_repo,
+)
+from fcship.commands.github.setup import (
     protect_branch as setup_protect_branch,
+)
+from fcship.commands.github.setup import (
+    setup_all as setup_all_features,
+)
+from fcship.commands.github.setup import (
     setup_environments,
     setup_secrets,
     setup_workflows,
-    setup_all as setup_all_features,
 )
 from fcship.tui.display import DisplayContext, error_message
 

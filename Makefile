@@ -13,7 +13,7 @@ lint:  ## Lint code with ruff
 	ruff check fcship/
 
 format:  ## Format code with ruff
-	ruff format fcship/
+	ruff check --fix --unsafe-fixes fcship/
 
 check-all: lint test  ## Run linting and tests
 

@@ -12,9 +12,10 @@ import typer
 
 from expression import Error, Ok, Result, effect, pipe
 from pydantic import BaseModel
-
-from fcship.tui.display import DisplayContext, success_message as display_success
 from rich.console import Console
+
+from fcship.tui.display import DisplayContext
+from fcship.tui.display import success_message as display_success
 from fcship.utils.error_handling import handle_command_errors as handle_errors
 
 app = typer.Typer(help="GitHub repository setup commands")
