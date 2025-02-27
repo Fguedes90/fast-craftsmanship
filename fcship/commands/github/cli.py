@@ -2,7 +2,7 @@
 import typer
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass, field
 from expression import Result, Ok, Error, effect, tagged_union
 from typing import Literal
