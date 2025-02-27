@@ -1,7 +1,7 @@
 """API command implementation."""
 import typer
 from pathlib import Path
-from expression import Result, Ok, Error, effect, pipe, result
+from expression import Result, Ok, Error, Err, effect, pipe, result
 from expression.collections import Map
 from dataclasses import dataclass
 from typing import Dict
