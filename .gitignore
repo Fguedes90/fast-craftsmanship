@@ -11,3 +11,5 @@ node_modules/
 **/fschip.egg-info/*.txt
 **/.coverage
 **/*.egg-info
+# mkdocs documentation
+site/

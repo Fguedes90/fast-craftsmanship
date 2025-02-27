@@ -22,6 +22,13 @@ dev = [
     "ruff>=0.9.8",
 ]
 
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.6.5",
+    "mkdocstrings>=0.28.0",
+    "mkdocstrings-python>=1.16.0",
+]
+
 [project.scripts]
 fcship = "fcship.cli:main"
 
