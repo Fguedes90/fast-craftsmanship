@@ -6,3 +6,8 @@ node_modules/
 /playwright/.cache/
 .aider*
 .env
+**/__pycache__/
+**/*.gz
+**/fschip.egg-info/*.txt
+**/.coverage
+**/*.egg-info

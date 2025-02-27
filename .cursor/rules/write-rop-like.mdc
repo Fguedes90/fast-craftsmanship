@@ -1,0 +1,361 @@
+---
+description: write python code following rop functional style with expression lib
+globs: **/*.py
+---
+# Railway-Oriented Programming (ROP) Guidelines
+
+## Core Rules
+- ❌ NO try/except blocks - Use Result type instead
+- ❌ NO for/while loops - Use functional operations or recursion
+- ❌ NO if/else statements - Use pattern matching and pipeline
+- ❌ Avoid using .bind - Use @effect.result or pipeline instead
+- ❌ Never use async await - Use "@effect.result" with "yield from {callable->Result}" instead 
+
+## Required Imports
+```python
+from expression import (
+    Result, Ok, Error,
+    Option, Some, Nothing,
+    effect, pipeline, pipe,
+    tagged_union, case, tag
+)
+from dataclasses import dataclass
+from typing import List, Literal
+```
+
+## Pattern Examples
+
+### 1. Error Handling with Result
+```python
+# ✅ Do this:
+def risky_operation() -> Result[str, str]:
+    match condition_check():
+        case True: return Ok("success")
+        case False: return Error("operation failed")
+
+# ❌ Don't do this:
+try:
+    result = some_operation()
+except Exception as e:
+    handle_error(e)
+```
+
+### 2. Sequential Operations with @effect.result
+```python
+@effect.result[str, str]()
+def process_user(user_id: str):
+    user = yield from fetch_user(user_id)
+    profile = yield from get_profile(user)
+    settings = yield from load_settings(profile)
+    return settings
+```
+
+### 3. Data Transformation with pipe
+```python
+def process_text(text: str) -> str:
+    return pipe(
+        text,
+        str.strip,
+        str.lower,
+        lambda s: s.replace(" ", "_")
+    )
+```
+
+### 4. Complex Operations with pipeline
+```python
+def process_data(data: str) -> Result[str, str]:
+    return pipeline(
+        validate,
+        transform,
+        save
+    )(data)
+```
+
+### 5. Optional Values with Option
+```python
+def find_user(id: str) -> Option[User]:
+    return Some(user) if user_exists(id) else Nothing
+```
+
+### 6. Complex States with Tagged Union
+```python
+@tagged_union
+class UserState:
+    tag: Literal["active", "inactive", "blocked"] = tag()
+    
+    active: str = case()
+    inactive: str = case()
+    blocked: str = case()
+```
+
+### 7. Immutable Data Structures
+```python
+@dataclass(frozen=True)
+class UserData:
+    id: str
+    name: str
+    roles: List[str]
+```
+
+## Best Practices
+
+1. **Always Type Hint Your Functions**
+```python
+def process_user(user_id: str) -> Result[UserData, str]:
+    ...
+```
+
+2. **Use Descriptive Error Messages**
+```python
+def validate_email(email: str) -> Result[str, str]:
+    return (
+        Ok(email)
+        if "@" in email
+        else Error("Email must contain @ symbol")
+    )
+```
+
+3. **Compose Complex Operations**
+```python
+validate_user = pipeline(
+    validate_email,
+    validate_age,
+    validate_permissions
+)
+```
+
+4. **Use Pattern Matching for Result Handling**
+```python
+match result:
+    case Ok(value):
+        return process_success(value)
+    case Error(msg):
+        return handle_error(msg)
+```
+
+## Anti-patterns to Avoid
+
+❌ **Don't Mix Result with Regular Exceptions**
+```python
+# Don't do this:
+def operation() -> Result[str, str]:
+    try:
+        return Ok(some_operation())
+    except Exception as e:
+        return Error(str(e))
+```
+
+❌ **Don't Use Mutable State**
+```python
+# Don't do this:
+class UserManager:
+    def __init__(self):
+        self.users = []  # Mutable state!
+```
+
+❌ **Don't Mix Imperative and Functional Styles**
+```python
+# Don't do this:
+def process_users(users: List[User]) -> Result[List[User], str]:
+    result = []
+    for user in users:  # No loops!
+        if user.is_active:  # No if/else!
+            result.append(user)
+    return Ok(result)
+```
+
+## Converting Common Patterns
+
+### Loops to Map/Filter
+```python
+# Instead of:
+results = []
+for x in items:
+    results.append(process(x))
+
+# Use:
+results = list(map(process, items))
+```
+
+### Conditionals to Pattern Matching
+```python
+# Instead of:
+if condition:
+    do_something()
+else:
+    do_other()
+
+# Use:
+match condition:
+    case True: return do_something()
+    case False: return do_other()
+```
+
+### Error Handling to Result
+```python
+# Instead of:
+try:
+    result = risky_operation()
+except ValueError as e:
+    handle_error(e)
+
+# Use:
+match risky_operation():
+    case Ok(value): return process(value)
+    case Error(msg): return handle_error(msg)
+```
+
+### Common mistakes and pitfalls
+- "result.unwrap_error()" not exists, to access the value of Error use .error atribute
+- for type hints use "list, dict, tuple, type, | None" instead "List, Dict, Tuple, TypeVar, Optional"
+- import Callabla, Awaitable, Generator from collections.abc, not for typing
+
+Remember:
+- Always favor composition over inheritance
+- Keep functions pure and small
+- Use type hints consistently
+- Document complex transformations
+- Create typeAlias to improve readability
+- Consider performance implications of immutability for large data structures
+
+### Using Pydantic with ROP
+```python
+from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
+from typing import Dict, Any, TypeVar, Type
+from expression import Result, Ok, Error
+
+T = TypeVar('T', bound='ImmutableModel')
+
+class ImmutableModel(BaseModel):
+    """Base model for all Pydantic models in ROP style"""
+    model_config = ConfigDict(frozen=True)  # Make models immutable
+    
+    @classmethod
+    def create(cls: Type[T], **data) -> Result[T, str]:
+        """
+        Factory method that returns a Result containing the model or error.
+        
+        Example:
+            match User.create(name="Alice", email="alice@example.com"):
+                case Ok(user): print(f"Created user: {user.name}")
+                case Error(msg): print(f"Error: {msg}")
+        """
+        try:
+            instance = cls(**data)
+            return Ok(instance)
+        except Exception as e:
+            return Error(str(e))
+
+# ✅ Domain Models with Validation
+class User(ImmutableModel):
+    name: str
+    email: EmailStr
+    age: int
+    
+    @model_validator(mode='after')
+    def validate_age(self) -> 'User':
+        if self.age < 0:
+            raise ValueError("Age cannot be negative")
+        if self.age > 150:
+            raise ValueError("Age seems unrealistic")
+        return self
+
+# ✅ Nested Models
+class Address(ImmutableModel):
+    street: str
+    city: str
+    country: str
+
+class Order(ImmutableModel):
+    id: str
+    user: User
+    shipping_address: Address
+    items: List[str]
+    
+    @model_validator(mode='after')
+    def validate_order(self) -> 'Order':
+        if not self.items:
+            raise ValueError("Order must have at least one item")
+        return self
+
+# ✅ Using Models in ROP Pipeline
+@effect.result[Order, str]()
+def create_order(data: Dict[Any, Any]):
+    # Create and validate user first
+    user = yield from User.create(**data['user'])
+    
+    # Create and validate address
+    address = yield from Address.create(**data['shipping_address'])
+    
+    # Create full order
+    order = yield from Order.create(
+        id=data['id'],
+        user=user,
+        shipping_address=address,
+        items=data['items']
+    )
+    
+    return order
+
+# ✅ Error Handling with Pydantic Models
+def validate_input(data: Dict[Any, Any]) -> Result[Order, str]:
+    return pipeline(
+        lambda: data,
+        create_order
+    )()
+
+# Example usage:
+order_data = {
+    "id": "order123",
+    "user": {
+        "name": "Alice",
+        "email": "alice@example.com",
+        "age": 30
+    },
+    "shipping_address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "country": "US"
+    },
+    "items": ["item1", "item2"]
+}
+
+match validate_input(order_data):
+    case Ok(order):
+        print(f"Order created for {order.user.name}")
+    case Error(msg):
+        print(f"Failed to create order: {msg}")
+```
+
+### Best Practices for Pydantic in ROP
+
+1. **Always Use ImmutableModel as Base**
+   - Inherit from `ImmutableModel` to ensure immutability
+   - Use the `create` factory method for Result-based instantiation
+
+2. **Structured Validation**
+   - Use `model_validator` for complex validations
+   - Return descriptive error messages
+   - Keep validations pure and side-effect free
+
+3. **Type Safety**
+   - Use strict types like `EmailStr` for better validation
+   - Define custom types when needed
+   - Leverage Pydantic's type system for automatic validation
+
+4. **Composition Over Inheritance**
+   - Create small, focused models
+   - Compose models through nesting
+   - Use type hints for clarity
+
+5. **Error Handling**
+   - Use the Result type for all operations
+   - Provide detailed error messages
+   - Handle validation errors consistently
+
+Remember:
+- Keep models immutable
+- Use factory methods for creation
+- Validate at the model level
+- Compose models for complex structures
+- Handle errors functionally

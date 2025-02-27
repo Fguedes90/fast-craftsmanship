@@ -1,0 +1,174 @@
+---
+description: create and debug tests
+globs: test_*.py
+alwaysApply: false
+---
+# Runing the tests
+- move to fcship directory
+- activate virtual env
+- run with pytest
+- when creating or debuging one file ou test, run the specific file
+ex: "./.venv/bin/activate && pytest tests/tui/test_panels.py -v -x"
+
+# Testing Result Objects
+To test a Result(), use:
+- `.is_ok()` and `.ok` for success cases
+- `.is_error()` and `.error` for failure cases
+
+# Core Testing Principles
+- Write unit tests for all functions returning Result()
+- Test both success and failure scenarios
+- Use mocks/stubs for functions with side effects
+- Test edge cases and unexpected scenarios
+- Use pytest for organization and clarity
+
+# Key Assertion Patterns
+```python
+# Type checking
+assert isinstance(result, Result)
+
+# Success case
+assert result.is_ok() and result.ok == expected_value
+
+# Error case
+assert result.is_error() and isinstance(result.error, ExpectedErrorType)
+assert str(result.error) == "expected message"
+```
+
+# Best Practices
+1. Mock external calls and side effects
+2. Use pytest fixtures for common test setups
+3. Test error propagation in pipelines
+4. Document test cases clearly
+5. Use property-based testing for invariants
+6. Test success, failure and edge cases
+# Practical Examples
+
+## Basic Result Testing
+```python
+def test_divide():
+    # Success case
+    result = divide(10, 2)
+    assert result.is_ok()
+    assert result.ok == 5.0
+    
+    # Error case
+    result = divide(10, 0)
+    assert result.is_error()
+    assert "divisão por zero" in result.error.lower()
+```
+
+## Property-Based Testing
+```python
+from hypothesis import given, strategies as st
+
+@given(st.integers(), st.integers().filter(lambda x: x != 0))
+def test_divide_property(a: int, b: int):
+    result = divide(a, b)
+    assert result.is_ok()
+    assert result.ok == a / b
+```
+
+## Testing with Mocks
+```python
+def test_save_user(mocker):
+    mock_db = mocker.patch('module.database.save')
+    mock_db.return_value = Ok("User saved")
+    
+    result = save_user({"name": "Alice"})
+    assert result.is_ok()
+    assert mock_db.call_count == 1
+```
+
+## Pipeline Testing
+```python
+def test_user_registration_pipeline():
+    pipeline = compose_pipeline(
+        validate_user,
+        save_user,
+        send_welcome_email
+    )
+    
+    result = pipeline({"name": "Alice", "email": "alice@example.com"})
+    assert result.is_ok()
+    assert "welcome email sent" in result.ok.lower()
+```
+
+## Effect Testing
+```python
+@effect.result[str, str]()
+def process_user(user_data: dict):
+    validated = yield from validate_user(user_data)
+    saved = yield from save_user(validated)
+    return saved
+
+def test_process_user():
+    @effect.result[str, str]()
+    def run_test():
+        result = process_user({"name": "Alice"})
+        assert result.is_ok()
+        assert "saved" in result.ok.lower()
+    run_test()
+```
+
+## Error Chain Testing
+```python
+def test_error_propagation(mocker):
+    mock_save = mocker.patch('module.save_user')
+    mock_save.return_value = Error("Database error")
+    
+    result = process_user({"name": "Alice"})
+    assert result.is_error()
+    assert "database error" in result.error.lower()
+``` 
+## Testing with effect.result and Mocks
+When testing functions decorated with `@effect.result`, there are some special considerations:
+
+1. Test functions must also be decorated with `@effect.result`:
+```python
+
+def test_create_panel():
+    @effect.result[Panel, DisplayError]()
+    def run_test():
+        result = yield from create_panel("Title", "Content", "blue")
+        assert result.is_ok()
+        assert isinstance(result.ok, Panel)
+    run_test()
+```
+
+2. When mocking functions that use `effect.result`, the mocks must also be decorated and use `yield`:
+```python
+
+def test_with_mock(monkeypatch):
+    @effect.result[Panel, DisplayError]()
+    def mock_function(*args, **kwargs):
+        yield Ok(Panel("test"))  # Use yield instead of return
+    @effect.result[Panel, DisplayError]()
+    def run_test():
+        monkeypatch.setattr("module.function", mock_function)
+        result = yield from tested_function()
+        assert result.is_ok()
+    run_test()
+```
+
+3. Testing error cases with mocks:
+```python
+
+def test_error_with_mock(monkeypatch):
+    @effect.result[Panel, DisplayError]()
+    def mock_function(*args, **kwargs):
+        yield Error(DisplayError.Rendering("Mock error", None))
+    @effect.result[Panel, DisplayError]()
+    def run_test():
+        monkeypatch.setattr("module.function", mock_function)
+        result = yield from tested_function()
+        assert result.is_error()
+        assert "Mock error" in str(result.error)
+    run_test()
+```
+
+Key points:
+- Always use `@effect.result` on test functions
+- Mock functions must also use `@effect.result`
+- Use `yield` instead of `return` in mock functions
+- Remember to `yield from` when calling effect functions 
