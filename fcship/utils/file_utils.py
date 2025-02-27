@@ -120,8 +120,9 @@ def process_all_files(base: Path, files: Map[str, str], tracker: FileCreationTra
         Ok(tracker)
     )
 
-def create_files(files: Map[str, str], base_path: str = "") -> FileResult:
-    return pipe(
+@effect.result[FileCreationTracker, FileError]()
+def create_files(files: Map[str, str], base_path: str = ""):
+    yield pipe(
         Ok(Path(base_path)),
         result.bind(lambda base: process_all_files(base, files, FileCreationTracker()))
     )
