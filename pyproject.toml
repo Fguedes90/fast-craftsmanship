@@ -19,6 +19,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "fast-craftsmanship",
+    "ruff>=0.9.8",
 ]
 
 [project.scripts]
