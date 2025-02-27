@@ -21,6 +21,7 @@ from fcship.commands.github.main import (
     rerun_workflow,
     watch_workflow_run,
 )
+from fcship.commands.github.setup import app as setup_app
 
 __all__ = [
     "Release",
@@ -33,6 +34,7 @@ __all__ = [
     "display_workflow_run_details",
     "download_issue_body",
     "github_app",
+    "setup_app",
     "list_branches",
     "list_issues",
     "list_pull_requests",

@@ -97,6 +97,49 @@ When a new project is initialized, the following structure is created:
 └── tests/            # Test suites (unit and integration)
 ```
 
+## Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone <repository-URL>
+cd fast-craftsmanship
+
+# Install in development mode
+make dev-install
+```
+
+### Available Commands
+
+Run `make help` to see all available commands:
+
+```
+clean                Clean up build artifacts
+check-all            Run linting and tests
+dev-install          Install the package with development dependencies
+docs                 Generate documentation (placeholder - add your documentation command)
+format               Format code with ruff
+help                 Show this help
+install              Install the package
+lint                 Lint code with ruff
+release              Create a new release (placeholder - add your release commands)
+test                 Run all tests
+test-cov             Run tests with coverage report
+```
+
+## Releasing New Versions
+
+This project uses GitHub Actions for CI/CD with semantic versioning:
+
+1. To create a new release, go to the GitHub Actions tab and run the "Bump Version" workflow
+2. Choose the version type (patch, minor, or major)
+3. The workflow will:
+   - Update the version in pyproject.toml
+   - Commit and push the changes
+   - Create a tag for the new version
+   - Trigger the release workflow
+
 ## Contributing
 
 Contributions are welcome! To contribute:

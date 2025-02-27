@@ -3,7 +3,7 @@
 import os
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, List, Optional
 
 import typer
 
@@ -504,6 +504,7 @@ def github_actions_watch(repo_name: str, run_id: int):
 # CLI commands
 github_app = typer.Typer(name="github", help="GitHub integration commands")
 actions_app = typer.Typer(name="actions", help="GitHub Actions debugging commands")
+setup_app = typer.Typer(name="setup", help="GitHub repository setup commands")
 
 
 @github_app.command("repos")
@@ -632,8 +633,9 @@ def cli_github_repo_delete(
         raise typer.Exit(1)
 
 
-# Add the GitHub Actions sub-commands
+# Add the GitHub Actions and setup sub-commands
 github_app.add_typer(actions_app)
+github_app.add_typer(setup_app)
 
 
 @actions_app.command("list")
@@ -706,6 +708,113 @@ def cli_actions_watch(
 ):
     """Watch a GitHub Actions workflow run in real time."""
     for step in github_actions_watch(repo_name, run_id):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+# Setup commands
+@setup_app.command("init-repo")
+def cli_setup_init_repo(
+    repo_name: str = typer.Argument(..., help="Name of the repository to create"),
+    description: str = typer.Option("", help="Repository description"),
+    private: bool = typer.Option(False, help="Whether the repository should be private"),
+    auto_init: bool = typer.Option(True, help="Initialize with README, LICENSE, and .gitignore"),
+    license_template: Optional[str] = typer.Option("mit", help="License template to use (e.g., mit, apache-2.0)"),
+    gitignore_template: Optional[str] = typer.Option("Python", help="Gitignore template to use (e.g., Python, Node)"),
+):
+    """Create a new GitHub repository with best practices."""
+    for step in init_repo(repo_name, description, private, auto_init, license_template, gitignore_template):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+@setup_app.command("protect-branch")
+def cli_setup_protect_branch(
+    repo_name: str = typer.Argument(..., help="Name of the repository"),
+    branch_name: str = typer.Argument("main", help="Name of branch to protect"),
+    required_approvals: int = typer.Option(1, help="Number of required approvals for PRs"),
+    require_status_checks: bool = typer.Option(True, help="Require status checks to pass"),
+    require_signed_commits: bool = typer.Option(False, help="Require signed commits"),
+):
+    """Set up branch protection rules."""
+    for step in protect_branch(repo_name, branch_name, required_approvals, require_status_checks, require_signed_commits):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+@setup_app.command("setup-secrets")
+def cli_setup_secrets(
+    repo_name: str = typer.Argument(..., help="Name of the repository"),
+    pypi_token: bool = typer.Option(True, help="Set up PyPI API token secret"),
+    sonar_token: bool = typer.Option(False, help="Set up SonarCloud token secret"),
+    dockerhub: bool = typer.Option(False, help="Set up DockerHub credentials"),
+    gcp: bool = typer.Option(False, help="Set up Google Cloud Platform credentials"),
+    aws: bool = typer.Option(False, help="Set up AWS credentials"),
+):
+    """Set up GitHub secrets for CI/CD."""
+    for step in setup_secrets(repo_name, pypi_token, sonar_token, dockerhub, gcp, aws):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+@setup_app.command("setup-environments")
+def cli_setup_environments(
+    repo_name: str = typer.Argument(..., help="Name of the repository"),
+    environments: List[str] = typer.Option(["staging", "production"], help="Environments to set up"),
+    require_approvals: bool = typer.Option(True, help="Require approvals for deployments"),
+):
+    """Set up GitHub environments for deployments."""
+    for step in setup_environments(repo_name, environments, require_approvals):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+@setup_app.command("setup-workflows")
+def cli_setup_workflows(
+    repo_name: str = typer.Argument(..., help="Name of the repository"),
+    ci: bool = typer.Option(True, help="Set up CI workflow"),
+    release: bool = typer.Option(True, help="Set up release workflow"),
+    version_bump: bool = typer.Option(True, help="Set up version bump workflow"),
+    deploy: bool = typer.Option(False, help="Set up deployment workflow"),
+    codeql: bool = typer.Option(False, help="Set up CodeQL analysis"),
+    dependabot: bool = typer.Option(True, help="Set up Dependabot"),
+):
+    """Set up GitHub Actions workflows."""
+    for step in setup_workflows(repo_name, ci, release, version_bump, deploy, codeql, dependabot):
+        result = step
+
+    if result.is_error():
+        typer.echo(f"Error: {result.error}")
+        raise typer.Exit(1)
+
+
+@setup_app.command("setup-all")
+def cli_setup_all(
+    repo_name: str = typer.Argument(..., help="Name of the repository to set up"),
+    description: str = typer.Option("", help="Repository description"),
+    private: bool = typer.Option(False, help="Whether the repository should be private"),
+    license_template: Optional[str] = typer.Option("mit", help="License template to use (e.g., mit, apache-2.0)"),
+    setup_pypi: bool = typer.Option(True, help="Set up PyPI publishing"),
+    setup_docker: bool = typer.Option(False, help="Set up Docker image publishing"),
+    deployment_environments: List[str] = typer.Option(["staging", "production"], help="Environments to set up"),
+):
+    """Complete GitHub repository setup with best practices."""
+    for step in setup_all(repo_name, description, private, license_template, setup_pypi, setup_docker, deployment_environments):
         result = step
 
     if result.is_error():
