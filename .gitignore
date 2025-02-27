@@ -13,3 +13,8 @@ node_modules/
 **/*.egg-info
 # mkdocs documentation
 site/
+
+# Test project directory structure
+test_project/
+example_project/
+test_scaffold/
