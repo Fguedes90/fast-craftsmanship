@@ -73,6 +73,7 @@ def write_file(path: Path, content: str):
     except Exception as e:
         console.print(f"[red]Error writing file {path}: {str(e)}[/red]")
         yield Error(FileError(f"Failed to write file: {path}", str(e)))
+        return
 
 
 @effect.result[FileCreationTracker, str]()
