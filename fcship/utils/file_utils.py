@@ -42,17 +42,17 @@ class FileOperation:
 
 
 
-@effect.result[None, str]()
+@effect.result[None, FileError]()
 def ensure_directory(path: Path):
     """Ensure directory exists."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         yield Ok(None)
     except Exception as e:
-        yield Error(str(FileError(f"Failed to create directory: {path.parent}", str(path.parent))))
+        yield Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
 
 
-@effect.result[None, str]()
+@effect.result[None, FileError]()
 def write_file(path: Path, content: str):
     """Write content to file."""
     try:
@@ -62,9 +62,9 @@ def write_file(path: Path, content: str):
             console.print(f"[blue]Debug: Created parent directory: {path.parent}[/blue]")
         except Exception as e:
             console.print(f"[red]Error creating directory {path.parent}: {str(e)}[/red]")
-            yield Error(str(FileError(f"Failed to create directory: {path.parent}", str(e))))
+            yield Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
             return
-        
+
         # Write file content
         try:
             console.print(f"[blue]Debug: Writing content to file: {path}[/blue]")
@@ -73,11 +73,11 @@ def write_file(path: Path, content: str):
             yield Ok(None)
         except Exception as e:
             console.print(f"[red]Error writing file {path}: {str(e)}[/red]")
-            yield Error(str(FileError(f"Failed to write file: {path}", str(e))))
+            yield Error(FileError(f"Failed to write file: {path}", str(e)))
             return
     except Exception as e:
         console.print(f"[red]Unexpected error: {str(e)}[/red]")
-        yield Error(str(FileError("Unexpected error", str(e))))
+        yield Error(FileError("Unexpected error", str(e)))
 
 
 @effect.result[FileCreationTracker, str]()
@@ -110,7 +110,7 @@ def create_single_file(tracker, path_content: FileContent):
             return
         yield Ok(add_result.ok)
     else:
-        yield Error(str(FileError("Invalid tracker type", "")))
+        yield Error(FileError("Invalid tracker type", ""))
 
 def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
     return (base / file_info[0], file_info[1])
