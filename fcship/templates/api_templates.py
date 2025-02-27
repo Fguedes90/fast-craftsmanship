@@ -1,5 +1,6 @@
 """API templates"""
 
+
 def get_api_templates(name: str) -> dict[str, str]:
     """Get templates for API files."""
     return {
@@ -16,7 +17,6 @@ async def list_{name}s(
     current_user = Depends(get_current_user)
 ):
     return await service.list()""",
-
         f"api/schemas/{name}.py": f"""from pydantic import BaseModel
 
 class {name.title()}Base(BaseModel):
@@ -30,7 +30,6 @@ class {name.title()}Response({name.title()}Base):
 
     class Config:
         orm_mode = True""",
-
         f"tests/api/test_{name}.py": f"""import pytest
 from httpx import AsyncClient
 
@@ -46,5 +45,5 @@ async def test_{name}_endpoints(
     
     # Assert
     assert response.status_code == 200
-    assert isinstance(response.json(), list)"""
+    assert isinstance(response.json(), list)""",
     }

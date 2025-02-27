@@ -4,7 +4,6 @@
 - Run all tests: `pytest tests`
 - Run specific test: `pytest tests/path/to/test_file.py::test_function -v`
 - Run tests with coverage: `pytest --cov=fcship tests/`
-- Type checking: `mypy fcship/`
 - Lint: `ruff check fcship/`
 
 ## Code Style Guidelines

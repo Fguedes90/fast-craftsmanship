@@ -1,7 +1,11 @@
 """Configuration module with functional approach."""
-from dataclasses import dataclass
-from expression import Result, Ok, Error
+
 import os
+
+from dataclasses import dataclass
+
+from expression import Error, Ok, Result
+
 
 @dataclass
 class ScrapeConfig:
@@ -15,33 +19,35 @@ class ScrapeConfig:
     max_retries: int = 3
     browser_instances: int = 3
 
+
 def validate_config(config: ScrapeConfig) -> Result[ScrapeConfig, Exception]:
     """Validate scraper configuration using ROP."""
     try:
         if not config.root_url:
             return Error(ValueError("root_url cannot be empty"))
-        
+
         if not config.allowed_paths:
             return Error(ValueError("allowed_paths cannot be empty"))
-        
+
         if config.max_concurrent < 1:
             return Error(ValueError("max_concurrent must be at least 1"))
-        
+
         if config.max_depth < 1:
             return Error(ValueError("max_depth must be at least 1"))
-        
+
         if config.timeout <= 0:
             return Error(ValueError("timeout must be positive"))
-        
+
         if config.max_retries < 0:
             return Error(ValueError("max_retries cannot be negative"))
-        
+
         if config.browser_instances < 1:
             return Error(ValueError("browser_instances must be at least 1"))
-        
+
         return Ok(config)
     except Exception as e:
         return Error(e)
+
 
 def ensure_output_directory(config: ScrapeConfig) -> Result[ScrapeConfig, Exception]:
     """Ensure output directory exists using ROP."""
@@ -50,6 +56,7 @@ def ensure_output_directory(config: ScrapeConfig) -> Result[ScrapeConfig, Except
         return Ok(config)
     except Exception as e:
         return Error(e)
+
 
 def create_config(
     root_url: str,
@@ -60,7 +67,7 @@ def create_config(
     content_selector: str | None = None,
     timeout: float = 30.0,
     max_retries: int = 3,
-    browser_instances: int = 1
+    browser_instances: int = 1,
 ) -> Result[ScrapeConfig, Exception]:
     """Create and validate scraper configuration using ROP."""
     try:
@@ -73,9 +80,9 @@ def create_config(
             content_selector=content_selector,
             timeout=timeout,
             max_retries=max_retries,
-            browser_instances=browser_instances
+            browser_instances=browser_instances,
         )
-        
+
         return validate_config(config).bind(ensure_output_directory)
     except Exception as e:
         return Error(e)

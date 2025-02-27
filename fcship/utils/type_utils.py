@@ -1,10 +1,14 @@
 """Utilitários para manipulação de tipos."""
-from expression import Result, Ok, Error, pipe, Try, effect
-import typer
-from collections.abc import Callable
-from typing import TypeVar, Any
 
-T = TypeVar('T')
+from collections.abc import Callable
+from typing import Any, TypeVar
+
+import typer
+
+from expression import Error, Ok, Result
+
+T = TypeVar("T")
+
 
 def ensure_type(
     value: Any,
@@ -32,14 +36,13 @@ def ensure_type(
         if isinstance(validation_result, bool):
             if not validation_result:
                 raise ValueError(f"Valor inválido para {type_name}")
-        else:
-            if not validation_result.is_ok():
-                raise ValueError(validation_result.error)
+        elif not validation_result.is_ok():
+            raise ValueError(validation_result.error)
     return type_constructor(value)
 
+
 def map_type(
-    f: Callable[[str], Result[str, Exception]],
-    type_constructor: Callable[[str], T]
+    f: Callable[[str], Result[str, Exception]], type_constructor: Callable[[str], T]
 ) -> Callable[[T], Result[T, Exception]]:
     """
     Aplica uma função a um valor (convertido para string) e reconstrói o tipo,
@@ -52,19 +55,22 @@ def map_type(
     Returns:
         Uma função que, dado um valor do tipo T, retorna um Result[T, Exception].
     """
+
     def mapper(x: T) -> Result[T, Exception]:
         try:
             value_str = x.value
         except AttributeError:
             value_str = str(x)
         return f(value_str).map(lambda s: type_constructor(s))
+
     return mapper
+
 
 def validate_operation(
     operation: str,
     valid_operations: list[str],
     name: str | None = None,
-    requires_name: list[str] | None = None
+    requires_name: list[str] | None = None,
 ) -> Result[str, Exception]:
     """
     Valida uma operação de comando e os seus argumentos, garantindo que a operação
@@ -85,11 +91,9 @@ def validate_operation(
     """
     if operation not in valid_operations:
         valid_ops = ", ".join(valid_operations)
-        return Error(typer.BadParameter(
-            f"Operação inválida: {operation}. Operações válidas: {valid_ops}"
-        ))
+        return Error(
+            typer.BadParameter(f"Operação inválida: {operation}. Operações válidas: {valid_ops}")
+        )
     if requires_name is not None and operation in requires_name and not name:
-        return Error(typer.BadParameter(
-            f"A operação '{operation}' requer o parâmetro 'name'."
-        ))
+        return Error(typer.BadParameter(f"A operação '{operation}' requer o parâmetro 'name'."))
     return Ok(operation)

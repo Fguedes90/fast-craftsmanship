@@ -1,31 +1,39 @@
 """Logger module with functional approach."""
+
 import logging
 import sys
-from pathlib import Path
-from typing import  Any
+
 from dataclasses import dataclass
-from expression import Result, Ok
+from pathlib import Path
+from typing import Any
+
+from expression import Ok, Result
+
 from .exceptions import ProcessingException, capture_exception
 from .types import Url
+
 
 @dataclass
 class LogConfig:
     """Configuration for logging."""
+
     log_file: Path
     log_level: int = logging.INFO
-    format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     console_output: bool = True
+
 
 class FunctionalLogger:
     """Logger with functional approach."""
+
     def __init__(self, config: LogConfig):
         self.config = config
         self._setup_logger()
-        self.logger = logging.getLogger('scraper')
+        self.logger = logging.getLogger("scraper")
 
     def _setup_logger(self) -> None:
         """Setup logger with file and console handlers."""
-        logger = logging.getLogger('scraper')
+        logger = logging.getLogger("scraper")
         logger.setLevel(self.config.log_level)
 
         # File handler
@@ -51,11 +59,13 @@ class FunctionalLogger:
         except Exception as e:
             return capture_exception(e, ProcessingException, f"Failed to log info: {message}")
 
-    def error(self, message: str, error: Exception | None = None) -> Result[None, ProcessingException]:
+    def error(
+        self, message: str, error: Exception | None = None
+    ) -> Result[None, ProcessingException]:
         """Log error message."""
         try:
             if error:
-                self.logger.error(f"{message}: {str(error)}")
+                self.logger.error(f"{message}: {error!s}")
             else:
                 self.logger.error(message)
             return Ok(None)
@@ -86,7 +96,9 @@ class FunctionalLogger:
         """Log successful URL processing."""
         return self.info(f"Successfully processed URL: {url}")
 
-    async def log_url_failure(self, url: Url, error: Exception) -> Result[None, ProcessingException]:
+    async def log_url_failure(
+        self, url: Url, error: Exception
+    ) -> Result[None, ProcessingException]:
         """Log URL processing failure."""
         return self.error(f"Failed to process URL: {url}", error)
 

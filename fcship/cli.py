@@ -1,11 +1,14 @@
 """CLI application entry point for fast-craftsmanship tool."""
+
 import typer
+
+from expression import Result
 from rich.console import Console
-from expression import Result, Ok, Error
-from expression.core import Ok as OkType, Error as ErrorType
+
 from . import __version__
 from .commands import COMMANDS
 from .commands.github.cli import github_app
+
 # from .commands.api import api
 # from .commands.domain import domain
 # from .commands.service import service
@@ -23,14 +26,16 @@ app = typer.Typer(
 This tool helps you maintain a clean and consistent project structure following
 domain-driven design principles and FastAPI best practices.""",
     name="craftsmanship",
-    no_args_is_help=True
+    no_args_is_help=True,
 )
+
 
 def version_callback(value: bool) -> None:
     """Print version information and exit."""
     if value:
         console.print(f"[bold]Fast-craftsmanship[/bold] version: [cyan]{__version__}[/cyan]")
         raise typer.Exit()
+
 
 @app.callback()
 def callback(
@@ -46,33 +51,38 @@ def callback(
     """Fast-craftsmanship CLI tool for FastAPI projects."""
     pass
 
+
 def handle_result(result: Result) -> None:
     """Handle Result type from commands"""
-    if hasattr(result, 'ok'):
+    if hasattr(result, "ok"):
         if isinstance(result.ok, str):
             console.print(f"[green]{result.ok}[/green]")
-    elif hasattr(result, 'error'):
+    elif hasattr(result, "error"):
         console.print(f"[red]Error: {result.error}[/red]")
         raise typer.Exit(1)
     else:
         console.print("[yellow]Warning: Command returned unexpected result type[/yellow]")
 
+
 def wrap_command(cmd):
     """Wrap command to handle Result type"""
+
     def wrapper(*args, **kwargs):
         try:
             # Extract actual arguments from kwargs if they exist
-            if 'args' in kwargs and 'kwargs' in kwargs:
-                args = (kwargs['args'], kwargs['kwargs'])
+            if "args" in kwargs and "kwargs" in kwargs:
+                args = (kwargs["args"], kwargs["kwargs"])
                 kwargs = {}
             result = cmd(*args, **kwargs)
             if isinstance(result, Result):
                 handle_result(result)
             return result
         except Exception as e:
-            console.print(f"[red]Error: {str(e)}[/red]")
+            console.print(f"[red]Error: {e!s}[/red]")
             raise typer.Exit(1)
+
     return wrapper
+
 
 # Register all commands
 for cmd_name, (cmd_func, help_text) in COMMANDS.items():
@@ -84,9 +94,11 @@ for cmd_name, (cmd_func, help_text) in COMMANDS.items():
 # Add the GitHub commands
 app.add_typer(github_app)
 
+
 def main() -> None:
     """CLI entry point."""
     app()
+
 
 if __name__ == "__main__":
     main()

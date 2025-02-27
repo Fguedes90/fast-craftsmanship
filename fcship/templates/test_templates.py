@@ -1,5 +1,6 @@
 """Test templates"""
 
+
 def get_test_template(test_type: str, name: str) -> str:
     """Get template for test file based on type."""
     if test_type == "unit":
@@ -15,8 +16,8 @@ def test_{name}_creation():
     
     # Assert
     assert True  # TODO: Add real assertions"""
-    else:  # integration
-        return f"""import pytest
+    # integration
+    return f"""import pytest
 from httpx import AsyncClient
 
 async def test_{name}_integration(

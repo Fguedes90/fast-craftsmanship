@@ -1,10 +1,14 @@
 """Error types for the UI module."""
+
 from typing import Literal
+
 from expression import tagged_union
+
 
 @tagged_union
 class DisplayError:
     """Represents display-related errors."""
+
     tag: Literal["validation", "rendering", "interaction", "timeout", "execution", "input"]
     validation: str | None = None
     rendering: tuple[str, Exception] | None = None
@@ -49,14 +53,14 @@ class DisplayError:
             case DisplayError(tag="validation", validation=msg):
                 return f"Validation Error: {msg}"
             case DisplayError(tag="rendering", rendering=(msg, exc)):
-                return f"Display Error: {msg} - {str(exc)}"
+                return f"Display Error: {msg} - {exc!s}"
             case DisplayError(tag="interaction", interaction=(msg, exc)):
-                return f"Input Error: {msg} - {str(exc)}"
+                return f"Input Error: {msg} - {exc!s}"
             case DisplayError(tag="timeout", timeout=(msg, exc)):
-                return f"Timeout Error: {msg} - {str(exc)}"
+                return f"Timeout Error: {msg} - {exc!s}"
             case DisplayError(tag="execution", execution=(msg, err)):
                 return f"Execution Error: {msg} - {err}"
             case DisplayError(tag="input", input=(msg, err)):
                 return f"Input Error: {msg} - {err}"
             case _:
-                return "Unknown Error" 
+                return "Unknown Error"

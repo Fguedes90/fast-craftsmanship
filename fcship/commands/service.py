@@ -1,14 +1,18 @@
 """Service command implementation."""
-import typer
+
 from pathlib import Path
+
+import typer
+
 from fcship.templates.service_templates import get_service_templates
 from fcship.utils import (
-    handle_command_errors,
-    validate_operation,
-    success_message,
+    ensure_directory,
     file_creation_status,
-    ensure_directory
+    handle_command_errors,
+    success_message,
+    validate_operation,
 )
+
 
 @handle_command_errors
 def create_service(name: str) -> None:
@@ -22,9 +26,10 @@ def create_service(name: str) -> None:
             status.add_file(str(path))
     success_message(f"Created service {name}")
 
+
 def service(
     operation: str = typer.Argument(..., help="Operation to perform [create]"),
-    name: str = typer.Argument(..., help="Name of the service")
+    name: str = typer.Argument(..., help="Name of the service"),
 ) -> None:
     """Create a new service with required files."""
     validate_operation(operation, ["create"], name, requires_name=["create"])

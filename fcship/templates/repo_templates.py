@@ -1,5 +1,6 @@
 """Repository templates"""
 
+
 def get_repo_templates(name: str) -> dict[str, str]:
     """Get templates for repository files."""
     return {
@@ -20,7 +21,6 @@ class SQL{name.title()}Repository({name.title()}Repository):
     def list(self) -> List[{name.title()}Entity]:
         models = self.session.query({name.title()}Model).all()
         return [model.to_entity() for model in models]""",
-        
         f"tests/infrastructure/repositories/test_{name}_repository.py": f"""import pytest
 from infrastructure.repositories.{name}_repository import SQL{name.title()}Repository
 
@@ -40,5 +40,5 @@ def test_{name}_repository_list(db_session):
     result = repo.list()
     
     # Assert
-    assert isinstance(result, list)"""
+    assert isinstance(result, list)""",
     }

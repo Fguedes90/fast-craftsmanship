@@ -1,28 +1,31 @@
 """API command implementation."""
-import typer
-from pathlib import Path
-from expression import Result, Ok, Error, effect, pipe, result
-from expression.collections import Map
+
 from dataclasses import dataclass
-from typing import Dict
+from pathlib import Path
+
+import typer
+
+from expression import Error, Ok, Result, effect
+from expression.collections import Map
+
 from fcship.templates.api_templates import get_api_templates
-from fcship.utils import (
-    success_message,
-    file_creation_status,
-    FileCreationTracker,
-    create_files,
-    ensure_directory,
-    FileError,
-    console,
-    create_single_file
-)
 from fcship.tui import DisplayContext
+from fcship.utils import (
+    FileCreationTracker,
+    console,
+    create_single_file,
+    ensure_directory,
+    success_message,
+)
+
 
 @dataclass(frozen=True)
 class ApiContext:
     """Immutable context for API creation"""
+
     name: str
     files: Map[str, str]
+
 
 @effect.result[str, str]()
 def validate_api_name(name: str):
@@ -35,6 +38,7 @@ def validate_api_name(name: str):
     else:
         yield Ok(name)
 
+
 @effect.result[ApiContext, str]()
 def prepare_api_files(name: str):
     """Prepare API files from templates"""
@@ -43,30 +47,26 @@ def prepare_api_files(name: str):
         console.print(f"[blue]Debug: Generated templates for {name}:[/blue]")
         for path, content in files.items():
             console.print(f"[blue]  - {path}[/blue]")
-        
+
         # Build Map by adding items one by one
         files_map = Map.empty()
         for path, content in files.items():
             files_map = files_map.add(path, content)
         console.print(f"[blue]Debug: Files map items: {list(files_map.items())}[/blue]")
-        
+
         yield Ok(ApiContext(name=name, files=files_map))
     except Exception as e:
-        console.print(f"[red]Error preparing API files: {str(e)}[/red]")
-        yield Error(f"Failed to prepare API files: {str(e)}")
+        console.print(f"[red]Error preparing API files: {e!s}[/red]")
+        yield Error(f"Failed to prepare API files: {e!s}")
+
 
 @effect.result[None, str]()
 def ensure_api_directories():
     """Ensure all required API directories exist"""
     try:
         # Create required directories
-        directories = [
-            Path("api"),
-            Path("api/v1"),
-            Path("api/schemas"),
-            Path("tests/api")
-        ]
-        
+        directories = [Path("api"), Path("api/v1"), Path("api/schemas"), Path("tests/api")]
+
         console.print("[blue]Debug: Creating directories:[/blue]")
         for directory in directories:
             console.print(f"[blue]  - {directory}[/blue]")
@@ -74,10 +74,11 @@ def ensure_api_directories():
             if result.is_error():
                 yield Error(f"Failed to create API directories: {result.error}")
                 return
-        
+
         yield Ok(None)
     except Exception as e:
-        yield Error(f"Failed to create API directories: {str(e)}")
+        yield Error(f"Failed to create API directories: {e!s}")
+
 
 @effect.result[FileCreationTracker, str]()
 def create_api_files(ctx: ApiContext):
@@ -91,10 +92,10 @@ def create_api_files(ctx: ApiContext):
 
         console.print("[blue]Debug: Creating files:[/blue]")
         tracker = FileCreationTracker()
-        
+
         # Debug: Print files to be created
         console.print(f"[blue]Debug: Files in context: {list(ctx.files.items())}[/blue]")
-        
+
         # Iterate through each file and create it
         for path, content in ctx.files.items():
             console.print(f"[blue]Debug: Processing file {path}[/blue]")
@@ -109,8 +110,9 @@ def create_api_files(ctx: ApiContext):
         console.print("[blue]Debug: Files created successfully[/blue]")
         yield Ok(tracker)
     except Exception as e:
-        console.print(f"[red]Unexpected error in create_api_files: {str(e)}[/red]")
-        yield Error(f"Failed to create API files: {str(e)}")
+        console.print(f"[red]Unexpected error in create_api_files: {e!s}[/red]")
+        yield Error(f"Failed to create API files: {e!s}")
+
 
 @effect.result[str, str]()
 def notify_success(ctx: ApiContext, tracker: FileCreationTracker):
@@ -124,7 +126,8 @@ def notify_success(ctx: ApiContext, tracker: FileCreationTracker):
             return
         yield Ok(msg)
     except Exception as e:
-        yield Error(f"Failed to show success message: {str(e)}")
+        yield Error(f"Failed to show success message: {e!s}")
+
 
 @effect.result[str, str]()
 def create_api(name: str):
@@ -156,7 +159,8 @@ def create_api(name: str):
 
         yield Ok(notify_result.ok)
     except Exception as e:
-        yield Error(f"Unexpected error: {str(e)}")
+        yield Error(f"Unexpected error: {e!s}")
+
 
 @effect.result[tuple[str, str], str]()
 def validate_operation(operation: str, name: str):
@@ -166,10 +170,11 @@ def validate_operation(operation: str, name: str):
     else:
         yield Error(f"Invalid operation '{operation}'. Supported operations: [create]")
 
+
 @effect.result[str, str]()
 def api(
     operation: str = typer.Argument("create", help="Operation to perform [create]"),
-    name: str = typer.Argument(..., help="Name of the API route")
+    name: str = typer.Argument(..., help="Name of the API route"),
 ) -> Result[str, str]:
     """Create new API endpoint files."""
     # Validate operation
@@ -182,13 +187,13 @@ def api(
     if operation_result.is_error():
         yield Error(operation_result.error)
         return
-    
+
     # Create API
     _, api_name = operation_result.ok
     try:
         result = yield from create_api(api_name)
     except Exception as e:
-        yield Error(f"Unexpected error: {str(e)}")
+        yield Error(f"Unexpected error: {e!s}")
         return
     if result.is_error():
         yield Error(result.error)

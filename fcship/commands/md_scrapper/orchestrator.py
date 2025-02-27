@@ -1,14 +1,18 @@
 """Orchestrator module for scraper operations."""
-from typing import Dict, Any
+
 from pathlib import Path
-from expression import Result, Ok, Error, pipe
-from .context import ScraperContext
-from .pipeline import create_scraping_pipeline
-from .exceptions import ProcessingException, capture_exception
+from typing import Any
+
+from expression import Error, Ok, Result
+
 from .browser_pool import with_browser_pool
 from .config import create_config
-from .validation import validate_scraper_config
+from .context import ScraperContext
+from .exceptions import ProcessingException, capture_exception
 from .logger import FunctionalLogger, LogConfig
+from .pipeline import create_scraping_pipeline
+from .validation import validate_scraper_config
+
 
 async def run_scraper(
     root_url: str,
@@ -18,17 +22,17 @@ async def run_scraper(
     max_depth: int = 3,
     content_selector: str = None,
     timeout: float = 30.0,
-    log_file: Path = Path('scraper.log'),
-    browser_instances: int = 2
-) -> Result[Dict[str, Any], ProcessingException]:
+    log_file: Path = Path("scraper.log"),
+    browser_instances: int = 2,
+) -> Result[dict[str, Any], ProcessingException]:
     """Run the scraper with functional composition."""
     # Initialize logger first for early error catching
     log_config = LogConfig(log_file=log_file, console_output=True)
     logger = FunctionalLogger(log_config)
-    
+
     try:
         await logger.info("Starting scraper orchestration")
-        
+
         # Validate configuration
         await logger.info("Validating configuration")
         config_validation = await validate_scraper_config(
@@ -47,7 +51,7 @@ async def run_scraper(
             max_concurrent=max_concurrent,
             max_depth=max_depth,
             content_selector=content_selector,
-            timeout=timeout
+            timeout=timeout,
         )
         if isinstance(config_result, Error):
             await logger.error("Configuration creation failed", config_result.error)
@@ -58,7 +62,7 @@ async def run_scraper(
             if isinstance(pool_result, Error):
                 await logger.error("Browser pool creation failed", pool_result.error)
                 return pool_result
-            
+
             pool = pool_result.value
             context = pool.get_next_context()
 
@@ -74,7 +78,7 @@ async def run_scraper(
                 await logger.info("Starting scraping pipeline")
                 pipeline = create_scraping_pipeline()
                 result = await pipeline(context_result.value)
-                
+
                 if isinstance(result, Error):
                     await logger.error("Pipeline execution failed", result.error)
                     return result

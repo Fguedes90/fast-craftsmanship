@@ -1,25 +1,32 @@
 """File utilities."""
+
 from collections.abc import Callable
-from pathlib import Path
-import typer
-from expression import Result, Ok, Error, Option, Some, Nothing, Try, pipe, result, effect
-from expression.collections import Map, Block
-from typing import NamedTuple
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import NamedTuple
+
+import typer
+
+from expression import Error, Ok, Option, Result, effect, pipe, result
+from expression.collections import Block, Map
+
 from fcship.tui import console
 
-A = type("A")
-E = type("E")
-T = type("T")
+A = str
+E = str
+T = str
 ValidationResult = Result
 FileContent = tuple[Path, str]
 RawFileContent = tuple[str, str]
+
+
 @dataclass(frozen=True)
 class FileError:
     message: str
     path: str
-FileResult = Result
 
+
+FileResult = Result
 
 
 class FileStatus(NamedTuple):
@@ -27,19 +34,20 @@ class FileStatus(NamedTuple):
     status: str
 
 
-
 @dataclass(frozen=True)
 class FileCreationTracker:
     files: Map[str, str] = field(default_factory=Map.empty)
 
-    def add_file(self, path: str, status: str = "Created") -> Result["FileCreationTracker", FileError]:
+    def add_file(
+        self, path: str, status: str = "Created"
+    ) -> Result["FileCreationTracker", FileError]:
         return Ok(FileCreationTracker(self.files.add(path, status)))
+
 
 @dataclass(frozen=True)
 class FileOperation:
     path: Path
     content: str
-
 
 
 def ensure_directory(path: Path) -> Result[None, FileError]:
@@ -58,7 +66,7 @@ def write_file(path: Path, content: str) -> Result[None, FileError]:
         path.parent.mkdir(parents=True, exist_ok=True)
         console.print(f"[blue]Debug: Created parent directory: {path.parent}[/blue]")
     except Exception as e:
-        console.print(f"[red]Error creating directory {path.parent}: {str(e)}[/red]")
+        console.print(f"[red]Error creating directory {path.parent}: {e!s}[/red]")
         return Error(FileError(f"Failed to create directory: {path.parent}", str(e)))
 
     # Write file content
@@ -68,7 +76,7 @@ def write_file(path: Path, content: str) -> Result[None, FileError]:
         console.print(f"[blue]Debug: Successfully wrote content to file: {path}[/blue]")
         return Ok(None)
     except Exception as e:
-        console.print(f"[red]Error writing file {path}: {str(e)}[/red]")
+        console.print(f"[red]Error writing file {path}: {e!s}[/red]")
         return Error(FileError(f"Failed to write file: {path}", str(e)))
 
 
@@ -78,9 +86,9 @@ def create_single_file(tracker, path_content: FileContent):
     rel_path, content = path_content
     if not isinstance(rel_path, Path):
         rel_path = Path(rel_path)
-    
+
     console.print(f"[blue]Debug: Creating file {rel_path}[/blue]")
-    
+
     if isinstance(tracker, Path):
         file_path = rel_path if rel_path.is_absolute() else tracker / rel_path
         write_result = write_file(file_path, content)
@@ -94,8 +102,8 @@ def create_single_file(tracker, path_content: FileContent):
         if write_result.is_error():
             yield Error(write_result.error)
             return
-        
-        console.print(f"[blue]Debug: Adding file to tracker: {str(rel_path)}[/blue]")
+
+        console.print(f"[blue]Debug: Adding file to tracker: {rel_path!s}[/blue]")
         add_result = tracker.add_file(str(rel_path))
         if add_result.is_error():
             yield Error(str(add_result.error))
@@ -104,77 +112,90 @@ def create_single_file(tracker, path_content: FileContent):
     else:
         yield Error(FileError("Invalid tracker type", ""))
 
+
 def build_file_path(base: Path, file_info: RawFileContent) -> FileContent:
     return (base / file_info[0], file_info[1])
-
 
 
 def process_all_files(base: Path, files: Map[str, str], tracker: FileCreationTracker) -> FileResult:
     return files.fold(
         lambda acc, item: pipe(
-            acc,
-            result.bind(lambda tr: create_single_file(tr, build_file_path(base, item)))
+            acc, result.bind(lambda tr: create_single_file(tr, build_file_path(base, item)))
         ),
-        Ok(tracker)
+        Ok(tracker),
     )
+
 
 @effect.result[FileCreationTracker, FileError]()
 def create_files(files: Map[str, str], base_path: str = ""):
     yield pipe(
         Ok(Path(base_path)),
-        result.bind(lambda base: process_all_files(base, files, FileCreationTracker()))
+        result.bind(lambda base: process_all_files(base, files, FileCreationTracker())),
     )
+
 
 def format_error_message(msg: str, value: str = "") -> str:
     return f"{msg}{f': {value}' if value else ''}"
 
+
 def create_validation_error(msg: str) -> Result[None, typer.BadParameter]:
     return Error(typer.BadParameter(msg))
+
 
 def check(condition: bool, msg: str) -> ValidationResult:
     return Ok(None) if condition else Error(typer.BadParameter(msg))
 
-def validate_name_requirement(operation: str, requires_name: Block[str], name: str | None) -> ValidationResult:
-    return check(not (operation in requires_name and not name), f"Operation '{operation}' requires name")
+
+def validate_name_requirement(
+    operation: str, requires_name: Block[str], name: str | None
+) -> ValidationResult:
+    return check(
+        not (operation in requires_name and not name), f"Operation '{operation}' requires name"
+    )
+
 
 def validate_operation_existence(valid_ops: Block[str], operation: str) -> ValidationResult:
     return check(operation in valid_ops, f"Invalid operation: {operation}")
 
-def bind_name_validation(requires_name: Block[str], name: str | None, operation: str) -> Callable[[Result[None, typer.BadParameter]], Result[None, typer.BadParameter]]:
+
+def bind_name_validation(
+    requires_name: Block[str], name: str | None, operation: str
+) -> Callable[[Result[None, typer.BadParameter]], Result[None, typer.BadParameter]]:
     return lambda _: validate_name_requirement(operation, requires_name, name)
 
+
 def validate_operation(
-    valid_ops: Block[str],
-    requires_name: Block[str],
-    operation: str,
-    name: str | None
+    valid_ops: Block[str], requires_name: Block[str], operation: str, name: str | None
 ) -> Result[None, typer.BadParameter]:
     return validate_operation_existence(valid_ops, operation).bind(
         lambda _: validate_name_requirement(operation, requires_name, name)
     )
-    
+
 
 def find_file_in_tracker(tracker: FileCreationTracker, path: str) -> Option[str]:
     return pipe(
         tracker.files,
         lambda files: files.filter(lambda fs: fs.path == path),
-        lambda filtered: filtered.map(lambda fs: fs.status)
+        lambda filtered: filtered.map(lambda fs: fs.status),
     )
+
 
 def init_file_creation_tracker() -> Result[FileCreationTracker, FileError]:
     return Ok(FileCreationTracker())
 
+
 def file_creation_status(tracker: FileCreationTracker) -> str:
     return f"Created files: {list(tracker.files.keys())}"
+
 
 __all__ = [
     "FileError",
     "FileOperation",
-    "ensure_directory",
-    "write_file",
-    "create_single_file",
     "create_files",
+    "create_single_file",
+    "ensure_directory",
     "file_creation_status",
+    "init_file_creation_tracker",
     "validate_operation",
-    "init_file_creation_tracker"
+    "write_file",
 ]

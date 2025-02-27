@@ -1,28 +1,36 @@
 """Rate limiter with functional approach."""
+
 import asyncio
 import time
+
 from dataclasses import dataclass
-from typing import Dict, Optional, Any
-from expression import Result, Ok, Error
+from typing import Any
+
+from expression import Error, Ok, Result
+
 from .exceptions import ProcessingException, capture_exception
-from .types import Url
 from .logger import FunctionalLogger
+from .types import Url
+
 
 @dataclass
 class RateLimit:
     """Rate limit configuration."""
+
     requests_per_second: float
     burst_size: int
 
+
 class RateLimiter:
     """Token bucket rate limiter."""
+
     def __init__(self, rate_limit: RateLimit):
         self.rate = rate_limit.requests_per_second
         self.burst_size = rate_limit.burst_size
         self.tokens = rate_limit.burst_size
         self.last_update = time.monotonic()
         self.lock = asyncio.Lock()
-        self._domain_limiters: Dict[str, 'RateLimiter'] = {}
+        self._domain_limiters: dict[str, RateLimiter] = {}
 
     async def add_tokens(self) -> None:
         """Add tokens based on elapsed time."""
@@ -42,27 +50,23 @@ class RateLimiter:
                     await logger.debug(f"Rate limit reached, waiting {wait_time:.2f}s")
                     await asyncio.sleep(wait_time)
                     await self.add_tokens()
-                
+
                 self.tokens -= 1
                 return Ok(None)
         except Exception as e:
-            return capture_exception(
-                e,
-                ProcessingException,
-                "Failed to acquire rate limit token"
-            )
+            return capture_exception(e, ProcessingException, "Failed to acquire rate limit token")
 
-    def get_domain_limiter(self, domain: str) -> 'RateLimiter':
+    def get_domain_limiter(self, domain: str) -> "RateLimiter":
         """Get or create a rate limiter for a specific domain."""
         if domain not in self._domain_limiters:
             # More conservative rate limit for individual domains
             self._domain_limiters[domain] = RateLimiter(
                 RateLimit(
-                    requests_per_second=self.rate / 2,
-                    burst_size=max(1, self.burst_size // 2)
+                    requests_per_second=self.rate / 2, burst_size=max(1, self.burst_size // 2)
                 )
             )
         return self._domain_limiters[domain]
+
 
 async def with_rate_limit(
     url: Url,
@@ -70,30 +74,27 @@ async def with_rate_limit(
     logger: FunctionalLogger,
     operation: callable,
     *args,
-    **kwargs
+    **kwargs,
 ) -> Result[Any, ProcessingException]:
     """Execute operation with rate limiting using ROP."""
     try:
         # Get domain-specific limiter
         from urllib.parse import urlparse
+
         domain = urlparse(url).netloc
         domain_limiter = rate_limiter.get_domain_limiter(domain)
-        
+
         # Acquire tokens from both global and domain limiters
         global_result = await rate_limiter.acquire(logger)
         if isinstance(global_result, Error):
             return global_result
-            
+
         domain_result = await domain_limiter.acquire(logger)
         if domain_result.is_error():
             return domain_result
-        
+
         # Execute the operation
         return await operation(*args, **kwargs)
-        
+
     except Exception as e:
-        return capture_exception(
-            e,
-            ProcessingException,
-            f"Rate limited operation failed for {url}"
-        )
+        return capture_exception(e, ProcessingException, f"Rate limited operation failed for {url}")

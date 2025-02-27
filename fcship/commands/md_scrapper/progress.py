@@ -1,7 +1,10 @@
 """Progress tracking module with functional approach."""
+
 import asyncio
+
+from expression import Error, Ok, Result
 from tqdm import tqdm
-from expression import Result, Ok, Error
+
 
 class ProgressTracker:
     def __init__(self):
@@ -12,11 +15,7 @@ class ProgressTracker:
 
     def start(self):
         self.pbar = tqdm(
-            total=self.total,
-            desc="Downloading pages",
-            unit="page",
-            dynamic_ncols=True,
-            miniters=1
+            total=self.total, desc="Downloading pages", unit="page", dynamic_ncols=True, miniters=1
         )
 
     def update(self, n=1):
@@ -32,6 +31,7 @@ class ProgressTracker:
         if self.pbar:
             self.pbar.close()
 
+
 async def update_progress(progress: ProgressTracker, n: int = 1) -> Result[None, Exception]:
     """Update progress with ROP."""
     try:
@@ -40,6 +40,7 @@ async def update_progress(progress: ProgressTracker, n: int = 1) -> Result[None,
         return Ok(None)
     except Exception as e:
         return Error(e)
+
 
 async def increment_total(progress: ProgressTracker) -> Result[None, Exception]:
     """Increment total with ROP."""

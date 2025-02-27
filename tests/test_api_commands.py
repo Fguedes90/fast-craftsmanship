@@ -1,20 +1,24 @@
 """Tests for API commands."""
+
+import shutil
+
 from pathlib import Path
-import pytest
-from expression import Result, Ok, Error, effect, pipe
+
+from expression import Error, Ok, effect
 from expression.collections import Map
+
 from fcship.commands.api import (
-    create_api,
-    api,
     ApiContext,
-    validate_api_name,
-    prepare_api_files,
-    ensure_api_directories,
+    api,
+    create_api,
     create_api_files,
-    notify_success
+    ensure_api_directories,
+    notify_success,
+    prepare_api_files,
+    validate_api_name,
 )
 from fcship.utils import FileCreationTracker, FileError
-import shutil
+
 
 def run_effect(effect_fn):
     """Helper function to run effect functions without returning Result"""
@@ -25,6 +29,7 @@ def run_effect(effect_fn):
         return result
     except Exception as e:
         raise e
+
 
 def cleanup_api_files(name: str) -> None:
     """Clean up API files after test"""
@@ -58,6 +63,7 @@ def cleanup_api_files(name: str) -> None:
     if tests_dir.exists() and not any(tests_dir.iterdir()):
         tests_dir.rmdir()
 
+
 def cleanup_test_directories():
     """Clean up test directories recursively"""
     for directory in ["api", "tests/api"]:
@@ -65,8 +71,10 @@ def cleanup_test_directories():
         if path.exists():
             shutil.rmtree(path)
 
+
 def test_create_api_success():
     """Test successful API creation"""
+
     @effect.result[None, str]()
     def run_test():
         result = yield from create_api("test_endpoint")
@@ -79,24 +87,28 @@ def test_create_api_success():
         assert api_file.exists()
         assert schema_file.exists()
         assert test_file.exists()
-    
+
     run_test()
     cleanup_api_files("test_endpoint")
 
+
 def test_create_api_invalid_name():
     """Test API creation with invalid name"""
+
     @effect.result[None, str]()
     def test_impl():
         result = yield from create_api("")
         assert result.is_error()
         assert "Invalid API name" in result.error
         yield Ok(None)
-    
+
     run_effect(test_impl)
+
 
 def test_api_command_success():
     """Test API command execution success"""
     try:
+
         @effect.result[None, str]()
         def test_impl():
             result = yield from api("create", "test_api")
@@ -110,25 +122,29 @@ def test_api_command_success():
             assert schema_file.exists()
             assert test_file.exists()
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_api")
 
+
 def test_api_command_invalid_operation():
     """Test API command with invalid operation"""
+
     @effect.result[None, str]()
     def test_impl():
         result = yield from api("invalid", "test_api")
         assert result.is_error()
         assert "Invalid operation" in result.error
         yield Ok(None)
-    
+
     run_effect(test_impl)
+
 
 def test_create_api_with_mock(mocker):
     """Test API creation with mocked dependencies"""
     try:
+
         @effect.result[ApiContext, str]()
         def mock_prepare_files(name: str):
             yield Ok(ApiContext(name=name, files=Map([("test.py", "content")])))
@@ -137,8 +153,8 @@ def test_create_api_with_mock(mocker):
         def mock_create_files(files: Map[str, str], base_path: str):
             yield Ok(FileCreationTracker())
 
-        mocker.patch('fcship.commands.api.prepare_api_files', mock_prepare_files)
-        mocker.patch('fcship.utils.create_files', mock_create_files)
+        mocker.patch("fcship.commands.api.prepare_api_files", mock_prepare_files)
+        mocker.patch("fcship.utils.create_files", mock_create_files)
 
         @effect.result[None, str]()
         def test_impl():
@@ -146,19 +162,21 @@ def test_create_api_with_mock(mocker):
             assert result.is_ok()
             assert "Created API endpoint test_mock" in result.ok
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_mock")
 
+
 def test_create_api_prepare_error(mocker):
     """Test API creation when prepare files fails"""
     try:
+
         @effect.result[ApiContext, str]()
         def mock_prepare_files_error(name: str):
             yield Error("Mock prepare error")
 
-        mocker.patch('fcship.commands.api.prepare_api_files', mock_prepare_files_error)
+        mocker.patch("fcship.commands.api.prepare_api_files", mock_prepare_files_error)
 
         @effect.result[None, str]()
         def test_impl():
@@ -166,10 +184,11 @@ def test_create_api_prepare_error(mocker):
             assert result.is_error()
             assert "Mock prepare error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_error")
+
 
 def test_ensure_directories_error(mocker):
     """Test error handling when creating directories fails"""
@@ -178,7 +197,7 @@ def test_ensure_directories_error(mocker):
         def mock_ensure_directory(path: Path):
             return Error(str(FileError("Failed to create directory", str(path))))
 
-        mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
+        mocker.patch("fcship.commands.api.ensure_directory", mock_ensure_directory)
 
         @effect.result[None, str]()
         def test_impl():
@@ -186,19 +205,21 @@ def test_ensure_directories_error(mocker):
             assert result.is_error()
             assert "Failed to create directory" in str(result.error)
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_dir_error")
 
+
 def test_create_files_error(mocker):
     """Test error handling when creating files fails"""
     try:
+
         @effect.result[FileCreationTracker, str]()
         def mock_create_single_file(tracker, path_content: tuple[Path, str]):
             yield Error(str(FileError("Failed to write file", str(path_content[0]))))
 
-        mocker.patch('fcship.commands.api.create_single_file', mock_create_single_file)
+        mocker.patch("fcship.commands.api.create_single_file", mock_create_single_file)
 
         @effect.result[None, str]()
         def test_impl():
@@ -206,19 +227,21 @@ def test_create_files_error(mocker):
             assert result.is_error()
             assert "Failed to write file" in str(result.error)
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_file_error")
 
+
 def test_notify_success_error(mocker):
     """Test error handling when success notification fails"""
     try:
+
         @effect.result[None, str]()
         def mock_success_message(ctx, msg):
             yield Error("Failed to show success message")
 
-        mocker.patch('fcship.commands.api.success_message', mock_success_message)
+        mocker.patch("fcship.commands.api.success_message", mock_success_message)
 
         @effect.result[None, str]()
         def test_impl():
@@ -226,18 +249,20 @@ def test_notify_success_error(mocker):
             assert result.is_error()
             assert "Failed to show success message" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_notify_error")
 
+
 def test_api_unexpected_error(mocker):
     """Test handling of unexpected errors in API command"""
     try:
+
         def mock_validate_operation(*args):
             raise Exception("Unexpected error")
 
-        mocker.patch('fcship.commands.api.validate_operation', mock_validate_operation)
+        mocker.patch("fcship.commands.api.validate_operation", mock_validate_operation)
 
         @effect.result[None, str]()
         def test_impl():
@@ -245,18 +270,20 @@ def test_api_unexpected_error(mocker):
             assert result.is_error()
             assert "Unexpected error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_error")
 
+
 def test_create_api_unexpected_error(mocker):
     """Test handling of unexpected errors in create_api"""
     try:
+
         def mock_validate_name(*args):
             raise Exception("Unexpected validation error")
 
-        mocker.patch('fcship.commands.api.validate_api_name', mock_validate_name)
+        mocker.patch("fcship.commands.api.validate_api_name", mock_validate_name)
 
         @effect.result[None, str]()
         def test_impl():
@@ -264,32 +291,36 @@ def test_create_api_unexpected_error(mocker):
             assert result.is_error()
             assert "Unexpected error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_error")
 
+
 def test_validate_api_name_invalid_identifier():
     """Test API name validation with invalid Python identifier"""
     try:
+
         @effect.result[None, str]()
         def test_impl():
             result = yield from validate_api_name("invalid-name")
             assert result.is_error()
             assert "must be a valid Python identifier" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("invalid-name")
 
+
 def test_prepare_api_files_unexpected_error(mocker):
     """Test prepare_api_files with unexpected error"""
     try:
+
         def mock_get_templates(*args):
             raise Exception("Unexpected template error")
 
-        mocker.patch('fcship.commands.api.get_api_templates', mock_get_templates)
+        mocker.patch("fcship.commands.api.get_api_templates", mock_get_templates)
 
         @effect.result[None, str]()
         def test_impl():
@@ -298,10 +329,11 @@ def test_prepare_api_files_unexpected_error(mocker):
             assert "Failed to prepare API files" in result.error
             assert "Unexpected template error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test_error")
+
 
 def test_ensure_directories_unexpected_error(mocker):
     """Test ensure_api_directories with unexpected error"""
@@ -310,7 +342,7 @@ def test_ensure_directories_unexpected_error(mocker):
         def mock_ensure_directory(path: Path):
             return Error(str(FileError("Failed to create directory", str(path))))
 
-        mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
+        mocker.patch("fcship.commands.api.ensure_directory", mock_ensure_directory)
 
         @effect.result[None, str]()
         def test_impl():
@@ -323,8 +355,10 @@ def test_ensure_directories_unexpected_error(mocker):
     finally:
         cleanup_test_directories()
 
+
 def test_create_files_unexpected_error(mocker):
     """Test create_api_files with unexpected error"""
+
     # Use a regular function for ensure_directory now
     def mock_ensure_directory(path: Path):
         return Ok(None)
@@ -333,8 +367,8 @@ def test_create_files_unexpected_error(mocker):
     def mock_create_single_file(tracker, path_content: tuple[Path, str]):
         yield Error(str(FileError("Failed to write file", str(path_content[0]))))
 
-    mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
-    mocker.patch('fcship.commands.api.create_single_file', mock_create_single_file)
+    mocker.patch("fcship.commands.api.ensure_directory", mock_ensure_directory)
+    mocker.patch("fcship.commands.api.create_single_file", mock_create_single_file)
 
     @effect.result[None, str]()
     def test_impl():
@@ -343,35 +377,38 @@ def test_create_files_unexpected_error(mocker):
         assert result.is_error()
         assert "Failed to write file" in str(result.error)
         yield Ok(None)
-    
+
     run_effect(test_impl)
+
 
 def test_notify_success_unexpected_error(mocker):
     """Test notify_success with unexpected error"""
+
     def mock_success_message(*args):
         raise Exception("Unexpected notification error")
 
-    mocker.patch('fcship.commands.api.success_message', mock_success_message)
+    mocker.patch("fcship.commands.api.success_message", mock_success_message)
 
     @effect.result[None, str]()
     def test_impl():
         result = yield from notify_success(
-            ApiContext(name="test", files=Map()),
-            FileCreationTracker()
+            ApiContext(name="test", files=Map()), FileCreationTracker()
         )
         assert result.is_error()
         assert "Failed to show success message" in result.error
         assert "Unexpected notification error" in result.error
         yield Ok(None)
-    
+
     run_effect(test_impl)
+
 
 def test_api_unexpected_error_in_create(mocker):
     """Test api function with unexpected error in create_api"""
+
     def mock_create_api(*args):
         raise Exception("Unexpected create error")
 
-    mocker.patch('fcship.commands.api.create_api', mock_create_api)
+    mocker.patch("fcship.commands.api.create_api", mock_create_api)
 
     @effect.result[None, str]()
     def test_impl():
@@ -380,8 +417,9 @@ def test_api_unexpected_error_in_create(mocker):
         assert "Unexpected error" in result.error
         assert "Unexpected create error" in result.error
         yield Ok(None)
-    
+
     run_effect(test_impl)
+
 
 def test_ensure_directories_general_error(mocker):
     """Test ensure_api_directories with a general exception"""
@@ -392,7 +430,7 @@ def test_ensure_directories_general_error(mocker):
                 return Error("General directory error")
             return Ok(None)
 
-        mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
+        mocker.patch("fcship.commands.api.ensure_directory", mock_ensure_directory)
 
         @effect.result[None, str]()
         def test_impl():
@@ -406,6 +444,7 @@ def test_ensure_directories_general_error(mocker):
     finally:
         cleanup_test_directories()
 
+
 def test_create_files_general_error(mocker):
     """Test create_api_files with a general exception"""
     try:
@@ -417,8 +456,8 @@ def test_create_files_general_error(mocker):
         def mock_create_single_file(tracker, path_content: tuple[Path, str]):
             raise RuntimeError("General file error")
 
-        mocker.patch('fcship.commands.api.ensure_directory', mock_ensure_directory)
-        mocker.patch('fcship.commands.api.create_single_file', mock_create_single_file)
+        mocker.patch("fcship.commands.api.ensure_directory", mock_ensure_directory)
+        mocker.patch("fcship.commands.api.create_single_file", mock_create_single_file)
 
         @effect.result[None, str]()
         def test_impl():
@@ -428,14 +467,16 @@ def test_create_files_general_error(mocker):
             assert "Failed to create API files" in result.error
             assert "General file error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
         cleanup_api_files("test")
 
+
 def test_api_general_error(mocker):
     """Test api function with a general exception"""
     try:
+
         @effect.result[tuple[str, str], str]()
         def mock_validate_operation(operation: str, name: str):
             yield Ok((operation, name))
@@ -444,8 +485,8 @@ def test_api_general_error(mocker):
         def mock_create_api(name: str):
             raise RuntimeError("General API error")
 
-        mocker.patch('fcship.commands.api.validate_operation', mock_validate_operation)
-        mocker.patch('fcship.commands.api.create_api', mock_create_api)
+        mocker.patch("fcship.commands.api.validate_operation", mock_validate_operation)
+        mocker.patch("fcship.commands.api.create_api", mock_create_api)
 
         @effect.result[None, str]()
         def test_impl():
@@ -454,7 +495,7 @@ def test_api_general_error(mocker):
             assert "Unexpected error" in result.error
             assert "General API error" in result.error
             yield Ok(None)
-        
+
         run_effect(test_impl)
     finally:
-        cleanup_api_files("test_error") 
+        cleanup_api_files("test_error")

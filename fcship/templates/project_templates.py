@@ -1,5 +1,6 @@
 """Project templates"""
 
+
 def get_project_templates(name: str) -> dict[str, str]:
     """Get templates for project scaffolding."""
     return {
@@ -50,5 +51,5 @@ A FastAPI project using fast-craftsmanship.
 ├── infrastructure/ # Database and external services
 └── tests/        # Test suites
 ```
-"""
+""",
     }

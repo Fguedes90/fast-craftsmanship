@@ -1,19 +1,25 @@
 """Context module for managing scraper state."""
-from dataclasses import dataclass
+
 import asyncio
+
+from dataclasses import dataclass
 from pathlib import Path
-from expression import Result, Ok
+
+from expression import Ok, Result
 from playwright.async_api import BrowserContext
-from .monitoring import ScraperMonitor
-from .url_tracker import UrlTracker
-from .progress import ProgressTracker
-from .exceptions import ProcessingException, capture_exception
+
 from .config import ScrapeConfig
+from .exceptions import ProcessingException, capture_exception
 from .logger import FunctionalLogger, LogConfig
+from .monitoring import ScraperMonitor
+from .progress import ProgressTracker
+from .url_tracker import UrlTracker
+
 
 @dataclass
 class ScraperContext:
     """Context for scraper operations."""
+
     config: ScrapeConfig
     browser_context: BrowserContext
     url_queue: asyncio.Queue
@@ -25,27 +31,24 @@ class ScraperContext:
 
     @classmethod
     async def create(
-        cls,
-        config: ScrapeConfig,
-        browser_context: BrowserContext
-    ) -> Result['ScraperContext', ProcessingException]:
+        cls, config: ScrapeConfig, browser_context: BrowserContext
+    ) -> Result["ScraperContext", ProcessingException]:
         """Create a new scraper context."""
         try:
-            log_config = LogConfig(
-                log_file=Path('scraper.log'),
-                console_output=True
+            log_config = LogConfig(log_file=Path("scraper.log"), console_output=True)
+
+            return Ok(
+                cls(
+                    config=config,
+                    browser_context=browser_context,
+                    url_queue=asyncio.Queue(),
+                    url_tracker=UrlTracker(),
+                    progress=ProgressTracker(),
+                    monitor=ScraperMonitor(),
+                    logger=FunctionalLogger(log_config),
+                    file_lock=asyncio.Lock(),
+                )
             )
-            
-            return Ok(cls(
-                config=config,
-                browser_context=browser_context,
-                url_queue=asyncio.Queue(),
-                url_tracker=UrlTracker(),
-                progress=ProgressTracker(),
-                monitor=ScraperMonitor(),
-                logger=FunctionalLogger(log_config),
-                file_lock=asyncio.Lock()
-            ))
         except Exception as e:
             return capture_exception(e, ProcessingException, "Failed to create scraper context")
 

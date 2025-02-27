@@ -1,24 +1,28 @@
+
+from collections.abc import Generator
+from typing import Any
+
 import pytest
-from expression import Ok, Error, Result, effect, pipe
+
+from expression import Error, Ok, Result, effect, pipe
 from rich.progress import Progress, SpinnerColumn, TextColumn
+
 from fcship.tui.progress import (
     ProgressConfig,
-    ProgressContext,
     ProgressError,
-    create_progress_config,
-    create_progress,
-    display_progress,
-    safe_display_with_progress,
-    run_with_timeout,
     create_context,
+    create_progress,
+    create_progress_config,
+    display_progress,
+    run_with_timeout,
+    safe_display_with_progress,
 )
-from fcship.tui.errors import DisplayError
-import asyncio
-from typing import Any, Generator
+
 
 @pytest.fixture
 def sample_config() -> Result[ProgressConfig, ProgressError]:
     return create_progress_config("Test Progress", 10)
+
 
 def test_create_progress_config():
     """Test progress configuration creation"""
@@ -42,14 +46,13 @@ def test_create_progress_config():
     assert config.parallel is True
     assert config.max_workers == 2
 
+
 def test_create_progress_success(sample_config):
     """Test successful progress bar creation"""
-    result = pipe(
-        sample_config,
-        lambda r: r.bind(create_progress)
-    )
+    result = pipe(sample_config, lambda r: r.bind(create_progress))
     assert result.is_ok()
     assert isinstance(result.ok, Progress)
+
 
 def test_create_progress_error():
     """Test progress bar creation with invalid config"""
@@ -57,8 +60,10 @@ def test_create_progress_error():
     assert result.is_error()
     assert result.error.tag == "validation"
 
+
 def test_display_progress_validation():
     """Test input validation for display_progress"""
+
     @effect.result[None, ProgressError]()
     def run_test():
         def mock_process(x: Any) -> Generator[Any, Any, Result[Any, Any]]:
@@ -82,39 +87,49 @@ def test_display_progress_validation():
         assert result.is_error()
         assert isinstance(result.error, ProgressError)
         assert result.error.tag == "validation"
+
     run_test()
+
 
 def test_display_progress_sequential():
     """Test sequential progress display"""
+
     @effect.result[None, ProgressError]()
     def run_test():
         items = [1, 2, 3]
+
         def process(x: int) -> Generator[Any, Any, Result[int, str]]:
             yield from []
             return Ok(x * 2)
 
         result = yield from display_progress(items, process, "Processing items")
         assert result.is_ok()
+
     run_test()
+
 
 def test_display_progress_parallel():
     """Test parallel progress display"""
+
     @effect.result[None, ProgressError]()
     def run_test():
         items = [1, 2, 3]
+
         def process(x: int) -> Generator[Any, Any, Result[int, str]]:
             yield from []
             return Ok(x * 2)
 
         result = yield from display_progress(
-            items, process, "Processing items", 
-            parallel=True, max_workers=2
+            items, process, "Processing items", parallel=True, max_workers=2
         )
         assert result.is_ok()
+
     run_test()
+
 
 def test_safe_display_with_progress(sample_config):
     """Test safe progress display with error handling"""
+
     @effect.result[None, ProgressError]()
     def run_test():
         items = [1, 2, 3]
@@ -142,10 +157,13 @@ def test_safe_display_with_progress(sample_config):
         result = yield from safe_display_with_progress(context)
         assert result.is_error()
         assert result.error.tag == "parallel"
+
     run_test()
+
 
 def test_run_with_timeout():
     """Test timeout functionality"""
+
     @effect.result[int, ProgressError]()
     def run_test():
         # Test successful completion
@@ -165,13 +183,17 @@ def test_run_with_timeout():
         result = yield from run_with_timeout(error_task(), 1.0)
         assert result.is_error()
         assert result.error.tag == "execution"
+
     run_test()
+
 
 def test_display_progress_error_handling():
     """Test error handling in progress display"""
+
     @effect.result[None, ProgressError]()
     def run_test():
         items = [1, 2, 3]
+
         def error_process(x: int) -> Generator[Any, Any, Result[int, str]]:
             yield from []
             if x == 2:
@@ -185,12 +207,13 @@ def test_display_progress_error_handling():
 
         # Test parallel error handling
         result = yield from display_progress(
-            items, error_process, "Error test",
-            parallel=True, max_workers=2
+            items, error_process, "Error test", parallel=True, max_workers=2
         )
         assert result.is_error()
         assert result.error.tag == "parallel"
+
     run_test()
+
 
 def test_progress_error_creation():
     """Test ProgressError creation methods"""
@@ -204,4 +227,4 @@ def test_progress_error_creation():
     error = ProgressError.from_parallel_errors(["error1", "error2"])
     assert error.tag == "parallel"
     assert error.parallel[0] == "Some parallel tasks failed"
-    assert error.parallel[1] == ["error1", "error2"] 
+    assert error.parallel[1] == ["error1", "error2"]
