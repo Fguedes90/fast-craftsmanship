@@ -5,7 +5,6 @@ Este módulo contém exemplos de documentação de código seguindo
 o estilo Google, que é recomendado para uso com mkdocstrings.
 """
 
-from typing import Dict, List, Optional, Tuple, Union
 
 
 class ExampleClass:
@@ -21,7 +20,7 @@ class ExampleClass:
         options (Dict[str, str]): Opções configuráveis da classe.
     """
     
-    def __init__(self, name: str, value: int = 0, options: Optional[Dict[str, str]] = None):
+    def __init__(self, name: str, value: int = 0, options: dict[str, str] | None = None):
         """Inicializa uma nova instância da classe ExampleClass.
         
         Args:
@@ -33,7 +32,7 @@ class ExampleClass:
         self.value = value
         self.options = options or {}
     
-    def process_data(self, data: List[int], factor: float = 1.0) -> List[float]:
+    def process_data(self, data: list[int], factor: float = 1.0) -> list[float]:
         """Processa uma lista de dados com um fator de multiplicação.
         
         Esta função demonstra como documentar um método que processa
@@ -59,7 +58,7 @@ class ExampleClass:
         
         return [item * factor for item in data]
     
-    def get_status(self) -> Tuple[str, int]:
+    def get_status(self) -> tuple[str, int]:
         """Retorna o status atual da instância.
         
         Returns:
@@ -68,7 +67,7 @@ class ExampleClass:
         return (self.name, self.value)
 
 
-def utility_function(input_value: Union[str, int], mode: str = "default") -> Dict[str, Union[str, int]]:
+def utility_function(input_value: str | int, mode: str = "default") -> dict[str, str | int]:
     """Função utilitária para processar um valor de entrada.
     
     Esta função demonstra como documentar uma função utilitária

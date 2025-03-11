@@ -1,27 +1,27 @@
 """Entry point for the compact command."""
 
-import sys
-from typing import Optional, List, Literal
-from pathlib import Path
-from expression import Result, Ok, Error
+from typing import Literal
+
+from expression import Error, Ok, Result
 
 from .cli import parse_arguments
-from .generator import generate_compact_code_with_config
-from .token_counter import analyze_file, print_token_analysis
 from .config import (
     COMPACT_NOTATION_FILE,
     DEFAULT_OUTPUT_FILE,
     IGNORE_DIRS,
     IGNORE_FILES,
 )
+from .generator import generate_compact_code_with_config
+from .token_counter import analyze_file, print_token_analysis
+
 
 def compact(
-    output_file: Optional[str] = None,
+    output_file: str | None = None,
     project_root: str = ".",
-    notation_file: Optional[str] = None,
-    ignore_dirs: Optional[List[str]] = None,
-    ignore_files: Optional[List[str]] = None,
-    target: Optional[str] = None, 
+    notation_file: str | None = None,
+    ignore_dirs: list[str] | None = None,
+    ignore_files: list[str] | None = None,
+    target: str | None = None, 
     stdout: bool = False,
     verbose: bool = False,
     count_tokens: bool = False,
@@ -77,8 +77,7 @@ def compact(
             
         if stdout:
             return Ok("Compact code generated and printed to stdout")
-        else:
-            return Ok(f"Compact code generated at {result_file}")
+        return Ok(f"Compact code generated at {result_file}")
             
     except Exception as e:
         return Error(f"Error generating compact code: {e}")

@@ -7,7 +7,7 @@ from .api import api
 from .commit.commit import commit
 from .compact.compact import compact_command
 from .db import db
-from .docs import setup_command, serve_docs, build_docs
+from .docs import build_docs, serve_docs, setup_command
 from .domain import domain
 from .github.cli import github_app
 from .project import project

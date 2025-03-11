@@ -7,6 +7,7 @@ projeto Fast Craftsmanship.
 from rich.console import Console
 
 from fcship.tui import error_message, success_message
+from fcship.utils.docstring_example import ExampleClass, utility_function
 
 from .error_handling import handle_command_errors
 from .file_utils import (
@@ -27,8 +28,6 @@ from .functional import (
 )
 from .type_utils import ensure_type, map_type
 from .validation import validate_operation
-
-from fcship.utils.docstring_example import ExampleClass, utility_function
 
 # Create console instance for global use
 console = Console()

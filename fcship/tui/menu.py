@@ -139,11 +139,10 @@ def run_command(command_name: str, show_help: bool = False):
             cmd = ["python", "-m", "fcship.cli", "docs", "--help"]
         else:
             cmd = ["python", "-m", "fcship.cli", "docs"]
+    elif show_help:
+        cmd = ["python", "-m", "fcship.cli", command_name, "--help"]
     else:
-        if show_help:
-            cmd = ["python", "-m", "fcship.cli", command_name, "--help"]
-        else:
-            cmd = ["python", "-m", "fcship.cli", command_name]
+        cmd = ["python", "-m", "fcship.cli", command_name]
     
     console.print(f"[bold]Running: [green]{' '.join(cmd)}[/green][/bold]")
     console.print()
