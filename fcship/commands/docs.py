@@ -2,19 +2,15 @@
 
 Este módulo contém comandos para gerenciar a documentação usando MkDocs.
 """
-from pathlib import Path
-import os
-import shutil
 import subprocess
-from typing import List, Optional, Dict, Any, Literal
 
-import rich_click as click
+from pathlib import Path
+from typing import Any
+
 import questionary
+
+from expression import Error, Ok, Result
 from rich.console import Console
-from rich.panel import Panel
-from rich.markdown import Markdown
-from rich import print as rprint
-from expression import Result, Ok, Error
 
 console = Console()
 
@@ -114,7 +110,7 @@ def ensure_mkdocs_installed() -> Result[bool, str]:
     
     return Ok(True)
 
-def get_theme_config() -> Dict[str, Any]:
+def get_theme_config() -> dict[str, Any]:
     """Obtém as configurações de tema do usuário de forma interativa."""
     selected_theme = questionary.select(
         "Selecione o tema principal:",
@@ -194,7 +190,7 @@ def get_theme_config() -> Dict[str, Any]:
     
     return theme_config
 
-def get_plugins_config() -> List[Dict[str, Any]]:
+def get_plugins_config() -> list[dict[str, Any]]:
     """Obtém as configurações de plugins do usuário de forma interativa."""
     selected_plugins = questionary.checkbox(
         "Selecione os plugins que deseja utilizar:",
@@ -239,7 +235,7 @@ def get_plugins_config() -> List[Dict[str, Any]]:
     
     return plugins_config
 
-def get_markdown_extensions() -> List[Dict[str, Any]]:
+def get_markdown_extensions() -> list[dict[str, Any]]:
     """Obtém as extensões markdown selecionadas pelo usuário."""
     extensions = questionary.checkbox(
         "Selecione as extensões Markdown que deseja ativar:",
@@ -292,13 +288,13 @@ def get_markdown_extensions() -> List[Dict[str, Any]]:
     
     return md_extensions
 
-def generate_mkdocs_yml(config: Dict[str, Any]) -> str:
+def generate_mkdocs_yml(config: dict[str, Any]) -> str:
     """Gera o conteúdo do arquivo mkdocs.yml."""
     import yaml
     
     # Configuração para preservar a formatação em blocos
     class BlockDumper(yaml.SafeDumper):
-        def represent_mapping(self, tag, mapping, flow_style=None):
+        def represent_mapping(self, tag, mapping, _=None):
             return super().represent_mapping(tag, mapping, flow_style=False)
     
     # Configuração para formatar o output YAML
@@ -504,11 +500,11 @@ def create_mermaid_init_js() -> None:
 
 def setup_docs(
     force_overwrite: bool = False,
-    site_name: Optional[str] = None,
-    site_description: Optional[str] = None,
-    site_url: Optional[str] = None,
-    repo_url: Optional[str] = None,
-    theme: Optional[str] = None,
+    site_name: str | None = None,
+    site_description: str | None = None,
+    site_url: str | None = None,
+    repo_url: str | None = None,
+    theme: str | None = None,
     add_mermaid: bool = True,
     add_mkdocstrings: bool = True,
     setup_github_workflow: bool = False
@@ -569,11 +565,7 @@ def setup_docs(
         project_info["repo_name"] = repo_url_value.split("github.com/")[-1] if "github.com/" in repo_url_value else ""
     
     # Configurações de tema
-    if theme:
-        # Usar tema fornecido sem perguntar
-        theme_config = {"name": theme}
-    else:
-        theme_config = get_theme_config()
+    theme_config = {"name": theme} if theme else get_theme_config()
     
     project_info["theme"] = theme_config
     
@@ -683,7 +675,7 @@ def setup_docs(
         console.print(f"[yellow]Aviso: Não foi possível construir a documentação: {e}[/yellow]")
     
     # Sucesso
-    message = f"""
+    message = """
 🎉 Documentação configurada com sucesso!
 
 - Estrutura de diretórios criada em [bold]docs/[/bold]
@@ -698,11 +690,11 @@ https://www.mkdocs.org/
 
 def setup_command(
     force_overwrite: bool = False,
-    site_name: Optional[str] = None,
-    site_description: Optional[str] = None,
-    site_url: Optional[str] = None,
-    repo_url: Optional[str] = None,
-    theme: Optional[str] = None,
+    site_name: str | None = None,
+    site_description: str | None = None,
+    site_url: str | None = None,
+    repo_url: str | None = None,
+    theme: str | None = None,
     add_mermaid: bool = True,
     add_mkdocstrings: bool = True,
     setup_github_workflow: bool = False
@@ -736,7 +728,7 @@ def setup_command(
             setup_github_workflow=setup_github_workflow
         )
     except Exception as e:
-        return Error(f"Erro ao configurar a documentação: {str(e)}")
+        return Error(f"Erro ao configurar a documentação: {e!s}")
 
 def serve_docs(
     dev_addr: str = "127.0.0.1:8000",
@@ -778,13 +770,13 @@ def serve_docs(
         subprocess.Popen(cmd, shell=True)
         return Ok(f"Servidor MkDocs iniciado em http://{dev_addr}")
     except Exception as e:
-        return Error(f"Erro ao iniciar o servidor MkDocs: {str(e)}")
+        return Error(f"Erro ao iniciar o servidor MkDocs: {e!s}")
 
 def build_docs(
     clean: bool = False,
     strict: bool = False,
     site_dir: str = "site",
-    config_file: Optional[str] = None,
+    config_file: str | None = None,
     verbose: bool = False
 ) -> Result[str, str]:
     """Constrói a documentação para produção.
@@ -825,4 +817,4 @@ def build_docs(
         subprocess.run(cmd, check=True)
         return Ok(f"Documentação construída com sucesso na pasta '{site_dir}/'")
     except Exception as e:
-        return Error(f"Erro ao construir a documentação: {str(e)}") 
+        return Error(f"Erro ao construir a documentação: {e!s}") 
