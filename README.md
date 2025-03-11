@@ -2,6 +2,8 @@
 
 Fast-Craftsmanship is a CLI tool designed to streamline the management and scaffolding of FastAPI projects. It follows best practices to help you create a clean, consistent, and scalable project structure, whether you are starting a new project or adding features to an existing one.
 
+📚 **Documentation**: [https://fguedes90.github.io/fast-craftsmanship/](https://fguedes90.github.io/fast-craftsmanship/)
+
 ## Features
 
 - **Project Initialization**: Quickly scaffold a new FastAPI project with a pre-defined structure.
@@ -139,6 +141,27 @@ This project uses GitHub Actions for CI/CD with semantic versioning:
    - Commit and push the changes
    - Create a tag for the new version
    - Trigger the release workflow
+
+## Documentation
+
+Full documentation is available at [https://fguedes90.github.io/fast-craftsmanship/](https://fguedes90.github.io/fast-craftsmanship/).
+
+Our documentation includes:
+- Detailed command references
+- Tutorials and guides
+- Architecture explanations
+- Development workflows
+- Best practices for functional programming
+
+To run the documentation locally:
+
+```bash
+# Install the docs dependencies
+pip install -e ".[docs]"
+
+# Serve the documentation
+mkdocs serve
+```
 
 ## Contributing
 

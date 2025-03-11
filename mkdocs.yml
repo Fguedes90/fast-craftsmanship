@@ -9,6 +9,11 @@ theme:
   palette:
     primary: indigo
     accent: indigo
+  font:
+    text: Roboto
+    code: Roboto Mono
+  icon:
+    logo: material/code-braces
   features:
     - navigation.instant
     - navigation.tracking
@@ -17,6 +22,10 @@ theme:
     - navigation.top
     - content.code.copy
     - content.code.annotate
+  language: en
+  favicon: assets/images/favicon.png
+  include_search_page: true
+  search_index_only: true
 
 markdown_extensions:
   - admonition

@@ -7,7 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "expression>=5.6.0",
     "hypothesis>=6.127.1",
+    "mkdocs-material>=9.6.7",
     "mkdocstrings>=0.29.0",
+    "mkdocstrings-python>=1.16.5",
     "pydantic>=2.10.6",
     "pygithub>=2.6.1",
     "pytest>=8.3.4",

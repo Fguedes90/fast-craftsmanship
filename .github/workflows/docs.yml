@@ -17,7 +17,7 @@ on:
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
-# Add permissions block
+# Permissões necessárias para deploy no GitHub Pages
 permissions:
   contents: write
 
@@ -28,15 +28,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: main
+          fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python mkdocs-autorefs
+          pip install mkdocs mkdocs-material>=9.6.7 
+          pip install mkdocstrings>=0.29.0 mkdocstrings-python>=1.16.5 mkdocs-autorefs>=1.4.1
 
-      - name: Build and deploy
+      - name: Create .nojekyll file
+        run: |
+          mkdir -p site
+          touch site/.nojekyll
+
+      - name: Build and deploy documentation
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdocs gh-deploy --clean
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          mkdocs gh-deploy --force
