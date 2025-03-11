@@ -53,6 +53,11 @@ extra:
       link: https://github.com/Fguedes90
   generator: false
 
+# JavaScript extra para Mermaid  
+extra_javascript:
+  - https://unpkg.com/mermaid@10.8.0/dist/mermaid.min.js
+  - assets/js/mermaid-init.js
+
 # Extensions para Markdown
 markdown_extensions:
   - admonition
@@ -60,7 +65,11 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.details
@@ -131,9 +140,11 @@ nav:
     - Introduction: functional/index.md
     - ROP: functional/rop.md
     - Effects: functional/effects.md
+    - Diagramas ROP: functional/diagrams.md
   - Development:
     - Contributing: development/contributing.md
     - Architecture: development/architecture.md
+    - Diagramas: development/diagrams.md
     - CLI:
       - Overview: docs/cli/index.md
       - Commands: docs/cli/commands/index.md
