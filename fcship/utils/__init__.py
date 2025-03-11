@@ -1,4 +1,8 @@
-"""Shared utilities for CLI commands."""
+"""Pacote de utilitários para o fcship.
+
+Este pacote contém várias funções e classes utilitárias usadas pelo
+projeto Fast Craftsmanship.
+"""
 
 from rich.console import Console
 
@@ -24,6 +28,8 @@ from .functional import (
 from .type_utils import ensure_type, map_type
 from .validation import validate_operation
 
+from fcship.utils.docstring_example import ExampleClass, utility_function
+
 # Create console instance for global use
 console = Console()
 
@@ -47,4 +53,6 @@ __all__ = [
     "tap",
     "tap_async",
     "validate_operation",
+    "ExampleClass",
+    "utility_function",
 ]
