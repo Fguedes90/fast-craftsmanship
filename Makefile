@@ -10,10 +10,10 @@ test-cov:  ## Run tests with coverage report
 	pytest --cov=fcship tests/
 
 lint:  ## Lint code with ruff
-	ruff check fcship/
+	ruff check ./fcship
 
 format:  ## Format code with ruff
-	ruff check --fix --unsafe-fixes fcship/
+	ruff check --fix --unsafe-fixes ./fcship	
 
 check-all: lint test  ## Run linting and tests
 
@@ -24,6 +24,11 @@ clean:  ## Clean up build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .coverage
 	rm -rf htmlcov/
+	rm -rf .ruff_cache/
+	rm -rf .mypy_cache/
+	rm -rf ./backend/
+	rm -rf ./.coverage*
+	rm -rf ./site
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 

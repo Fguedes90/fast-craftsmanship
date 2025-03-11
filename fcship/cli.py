@@ -30,6 +30,7 @@ quality_app = typer.Typer(help=COMMAND_CATEGORIES["quality"])
 db_app = typer.Typer(help=COMMAND_CATEGORIES["db"])
 docs_app = typer.Typer(help=COMMAND_CATEGORIES["docs"])
 scraper_app = typer.Typer(help=COMMAND_CATEGORIES["scraper"])
+utils_app = typer.Typer(help=COMMAND_CATEGORIES["utils"])
 
 
 def version_callback(value: bool) -> None:
@@ -146,6 +147,8 @@ for category, commands in COMMANDS_BY_CATEGORY.items():
         category_app = quality_app
     elif category == "db":
         category_app = db_app
+    elif category == "utils":
+        category_app = utils_app
     
     if category_app:
         for cmd_name, (cmd_func, help_text) in commands.items():
@@ -159,6 +162,7 @@ app.add_typer(scaffold_app, name="scaffold")
 app.add_typer(vcs_app, name="vcs")
 app.add_typer(quality_app, name="quality")
 app.add_typer(db_app, name="db")
+app.add_typer(utils_app, name="utils")
 
 # Add the GitHub commands
 app.add_typer(github_app, name="github")

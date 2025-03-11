@@ -5,6 +5,7 @@ from typing import Any, Dict, Tuple
 
 from .api import api
 from .commit.commit import commit
+from .compact.compact import compact
 from .db import db
 from .domain import domain
 from .github.cli import github_app
@@ -25,7 +26,8 @@ COMMAND_CATEGORIES: Dict[str, str] = {
     "quality": "Quality Assurance & Testing",
     "db": "Database Management", 
     "docs": "Documentation Management",
-    "scraper": "Web Scraping"
+    "scraper": "Web Scraping",
+    "utils": "Utility Commands"
 }
 
 # Command definitions organized by category
@@ -47,6 +49,9 @@ COMMANDS_BY_CATEGORY: Dict[str, Dict[str, Tuple[CommandFunction, str]]] = {
     "db": {
         "db": (db, "Manage database migrations"),
     },
+    "utils": {
+        "compact": (compact, "Generate compact code representation"),
+    },
 }
 
 # Flat command structure for backward compatibility
@@ -60,6 +65,7 @@ __all__ = [
     "COMMAND_CATEGORIES",
     "api",
     "commit",
+    "compact",
     "db",
     "domain",
     "github_app",

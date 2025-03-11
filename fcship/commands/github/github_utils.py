@@ -379,7 +379,7 @@ jobs:
 """
 
     ci_result = yield from create_workflow_file(repo_name, "ci.yml", ci_workflow)
-    if ci_result.is_ok():
+    if isinstance(ci_result, Result) and ci_result.is_ok():
         result["ci.yml"] = True
 
     # Release workflow
@@ -437,7 +437,7 @@ jobs:
 """
 
     release_result = yield from create_workflow_file(repo_name, "release.yml", release_workflow)
-    if release_result.is_ok():
+    if isinstance(release_result, Result) and release_result.is_ok():
         result["release.yml"] = True
 
     # Version bump workflow
@@ -530,7 +530,7 @@ jobs:
 """
 
     bump_result = yield from create_workflow_file(repo_name, "bump-version.yml", bump_workflow)
-    if bump_result.is_ok():
+    if isinstance(bump_result, Result) and bump_result.is_ok():
         result["bump-version.yml"] = True
 
     yield Ok(result)
