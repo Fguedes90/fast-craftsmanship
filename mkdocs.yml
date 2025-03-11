@@ -121,9 +121,6 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - API:
-    - Reference: api/reference.md
-    - Guia de Docstrings: api/docstrings.md
   - Commands:
     - Overview: commands/index.md
     - GitHub: commands/github.md
@@ -153,19 +150,6 @@ nav:
         - UI: docs/cli/utils/ui.md
     - Backend:
       - Overview: docs/backend/index.md
-  - Dev Log:
-    - Backend Planning:
-      - Project Architecture: dev-log/backend-planing/01_project_archtecture.md
-      - Architecture Analysis: dev-log/backend-planing/architecture_analysis.md
-      - Architecture Decision Record: dev-log/backend-planing/architecture_decision_record.md
-      - Architecture Verification: dev-log/backend-planing/architecture_verification.md
-      - AST ROP Metric: dev-log/backend-planing/ast-rop-metric.md
-      - Backend Plan: dev-log/backend-planing/backend-plan.md
-      - Dependency Injection: dev-log/backend-planing/dependency_injection.md
-      - Development Workflow: dev-log/backend-planing/development-workflow.md
-      - Domain Driven Design: dev-log/backend-planing/domain_driven_design.md
-      - Implementation Plan: dev-log/backend-planing/implementation-plan.md
-      - Layer Boundaries: dev-log/backend-planing/layer_boundaries.md
-      - Repository Patterns: dev-log/backend-planing/repository_patterns.md
-    - CLI Fast Craftsmanship:
-      - CLI and Snippets Plan: dev-log/cli-fast-craftsmanship/cli-and-snippets-plan.md
+  - API:
+    - Reference: api/reference.md
+    - Guia de Docstrings: api/docstrings.md
