@@ -31,6 +31,7 @@ Fast Craftsmanship organizes functionality into these main command groups:
 | `verify` | Code verification and analysis |
 | `test` | Test utility commands |
 | `commit` | Git commit assistance with conventional commits |
+| `compact` | Compact code representation generation |
 
 ## Getting Help
 
@@ -60,3 +61,4 @@ Click on a specific command below to see detailed documentation:
 - [GitHub Commands](github.md) - Repository and workflow management
 - [Verify Commands](verify.md) - Code verification and analysis  
 - [Project Commands](project.md) - Project creation and setup
+- [Compact Commands](compact.md) - Compact code representation generation

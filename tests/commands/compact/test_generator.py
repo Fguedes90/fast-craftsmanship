@@ -23,7 +23,7 @@ class TestReadCompactNotationGuide:
         with patch('builtins.open', m):
             result = read_compact_notation_guide('notation.txt')
             assert result == expected_content
-            m.assert_called_once_with('notation.txt', 'r', encoding='utf-8')
+            m.assert_called_once_with('notation.txt', encoding='utf-8')
     
     def test_read_compact_notation_guide_error(self):
         # Arrange
@@ -174,7 +174,7 @@ class TestGetFilesToProcess:
         mock_is_dir.assert_called_once()
     
     @patch('fcship.commands.compact.generator.find_python_files')
-    @patch('fcship.commands.compact.generator.os.path.exists')
+    @patch('os.path.exists')
     @patch('pathlib.Path.is_dir')
     @patch('pathlib.Path.is_file')
     def test_get_files_to_process_with_default_ignores(self, mock_is_file, mock_is_dir, mock_exists, mock_find):
