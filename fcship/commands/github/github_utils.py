@@ -9,10 +9,10 @@ from expression import Error, Ok, Result, effect
 from github import Github, Repository
 from github.GithubException import GithubException
 
-from fcship.tui.input import get_password_input
+from fcship.tui.input import get_user_input
 
 
-@effect.result
+@effect.result[str, str]()
 def get_github_token() -> Result[str, str]:
     """
     Get GitHub token from environment or prompt user.
@@ -23,7 +23,7 @@ def get_github_token() -> Result[str, str]:
         return
 
     # Ask user for token
-    token = yield from get_password_input(
+    token = yield from get_user_input(
         "GitHub token not found in environment. Please enter your GitHub token: "
     )
 
@@ -35,7 +35,7 @@ def get_github_token() -> Result[str, str]:
     return
 
 
-@effect.result
+@effect.result[Github, str]()
 def get_github_client() -> Result[Github, str]:
     """
     Get authenticated GitHub client.
@@ -46,7 +46,7 @@ def get_github_client() -> Result[Github, str]:
         return
 
     try:
-        client = Github(token_result.value)
+        client = Github(token_result.ok)
         # Test authentication
         _ = client.get_user().login
         yield Ok(client)
@@ -59,7 +59,7 @@ def get_github_client() -> Result[Github, str]:
         return
 
 
-@effect.result
+@effect.result[Repository.Repository, str]()
 def create_repository(
     name: str,
     description: str = "",
@@ -76,7 +76,7 @@ def create_repository(
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
     user = client.get_user()
 
     try:
@@ -98,7 +98,7 @@ def create_repository(
         return
 
 
-@effect.result
+@effect.result[str, str]()
 def set_branch_protection(
     repo_name: str,
     branch_name: str = "main",
@@ -115,7 +115,7 @@ def set_branch_protection(
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
 
     try:
         user = client.get_user().login
@@ -145,7 +145,7 @@ def set_branch_protection(
         return
 
 
-@effect.result
+@effect.result[str, str]()
 def setup_repository_secret(
     repo_name: str,
     secret_name: str,
@@ -159,7 +159,7 @@ def setup_repository_secret(
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
 
     try:
         user = client.get_user().login
@@ -178,7 +178,7 @@ def setup_repository_secret(
         return
 
 
-@effect.result
+@effect.result[str, str]()
 def setup_environment(
     repo_name: str,
     environment_name: str,
@@ -193,7 +193,7 @@ def setup_environment(
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
 
     try:
         user = client.get_user().login
@@ -217,7 +217,7 @@ def setup_environment(
         return
 
 
-@effect.result
+@effect.result[str, str]()
 def create_workflow_file(
     repo_name: str,
     workflow_name: str,
@@ -231,7 +231,7 @@ def create_workflow_file(
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
 
     try:
         user = client.get_user().login
@@ -266,7 +266,7 @@ def create_workflow_file(
         return
 
 
-@effect.result
+@effect.result[str, str]()
 def create_dependabot_config(
     repo_name: str,
     package_managers: list[str] = None,
@@ -295,7 +295,7 @@ updates:
         yield Error(client_result.error)
         return
 
-    client = client_result.value
+    client = client_result.ok
 
     try:
         user = client.get_user().login
@@ -330,69 +330,8 @@ updates:
         return
 
 
-@effect.result
-def setup_codeql_analysis(
-    repo_name: str,
-    languages: list[str] = None,
-) -> Result[str, str]:
-    """
-    Set up CodeQL analysis workflow.
-    """
-    if not languages:
-        languages = ["python"]
 
-    languages_str = ", ".join([f"'{lang}'" for lang in languages])
-
-    workflow_content = f"""name: "CodeQL"
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 12 * * 1'
-
-jobs:
-  analyze:
-    name: Analyze
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [{languages_str}]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{{{ matrix.language }}}}
-
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-"""
-
-    result = yield from create_workflow_file(repo_name, "codeql-analysis.yml", workflow_content)
-    if result.is_error():
-        yield Error(result.error)
-        return
-
-    yield Ok("CodeQL analysis workflow created")
-    return
-
-
-@effect.result
+@effect.result[dict[str, bool], str]()
 def setup_workflow_templates(repo_name: str) -> Result[dict[str, bool], str]:
     """
     Set up common workflow files from templates.
@@ -440,7 +379,7 @@ jobs:
 """
 
     ci_result = yield from create_workflow_file(repo_name, "ci.yml", ci_workflow)
-    if ci_result.is_ok():
+    if isinstance(ci_result, Result) and ci_result.is_ok():
         result["ci.yml"] = True
 
     # Release workflow
@@ -498,7 +437,7 @@ jobs:
 """
 
     release_result = yield from create_workflow_file(repo_name, "release.yml", release_workflow)
-    if release_result.is_ok():
+    if isinstance(release_result, Result) and release_result.is_ok():
         result["release.yml"] = True
 
     # Version bump workflow
@@ -591,7 +530,7 @@ jobs:
 """
 
     bump_result = yield from create_workflow_file(repo_name, "bump-version.yml", bump_workflow)
-    if bump_result.is_ok():
+    if isinstance(bump_result, Result) and bump_result.is_ok():
         result["bump-version.yml"] = True
 
     yield Ok(result)

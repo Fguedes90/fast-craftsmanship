@@ -1,5 +1,8 @@
 # Fast-craftsmanship Development Guide
 
+## Language
+- All communications, code comments, documentation, commit messages, pull requests, and issue descriptions must be written in English
+
 ## Commands
 - Run all tests: `pytest tests`
 - Run specific test: `pytest tests/path/to/test_file.py::test_function -v`

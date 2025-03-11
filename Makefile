@@ -1,4 +1,4 @@
-.PHONY: help test test-cov lint format clean install dev-install release-patch release-minor release-major semantic-release
+.PHONY: help test test-cov lint format clean install dev-install tui release-patch release-minor release-major semantic-release
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -10,10 +10,10 @@ test-cov:  ## Run tests with coverage report
 	pytest --cov=fcship tests/
 
 lint:  ## Lint code with ruff
-	ruff check fcship/
+	ruff check ./fcship
 
 format:  ## Format code with ruff
-	ruff check --fix --unsafe-fixes fcship/
+	ruff check --fix --unsafe-fixes ./fcship	
 
 check-all: lint test  ## Run linting and tests
 
@@ -24,6 +24,11 @@ clean:  ## Clean up build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .coverage
 	rm -rf htmlcov/
+	rm -rf .ruff_cache/
+	rm -rf .mypy_cache/
+	rm -rf ./backend/
+	rm -rf ./.coverage*
+	rm -rf ./site
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
@@ -35,6 +40,9 @@ dev-install:  ## Install the package with development dependencies
 
 docs:  ## Generate documentation (placeholder - add your documentation command)
 	@echo "Add your documentation generation command here"
+
+tui:  ## Launch the interactive Terminal UI
+	python -m fcship.cli menu
 
 release-patch:  ## Create a new patch release (0.0.x)
 	@echo "Creating a new patch release..."

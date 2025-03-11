@@ -1,0 +1,64 @@
+site_name: Fast Craftsmanship
+site_description: A CLI tool to accelerate project development using best practices
+site_url: https://fguedes90.github.io/fast-craftsmanship/
+repo_url: https://github.com/Fguedes90/fast-craftsmanship
+repo_name: Fguedes90/fast-craftsmanship
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - footnotes
+  - attr_list
+  - def_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [fcship]
+          options:
+            show_source: true
+            docstring_style: google
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Commands:
+    - Overview: commands/index.md
+    - GitHub: commands/github.md
+    - Verify: commands/verify.md
+    - Project: commands/project.md
+  - Functional Programming:
+    - Introduction: functional/index.md
+    - ROP: functional/rop.md
+    - Effects: functional/effects.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Architecture: development/architecture.md
