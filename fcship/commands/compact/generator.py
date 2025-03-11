@@ -1,22 +1,21 @@
+import ast
+
 from pathlib import Path
-import os
-from .file_utils import find_python_files
+
+from .compact_code_visitor import CompactCodeVisitor
 from .compactors import (
     get_compact_class_signature,
+    get_compact_enum_signature,
     get_compact_function_signature,
     get_compact_method_signature,
-    get_compact_enum_signature
 )
-from .config import IGNORE_DIRS, IGNORE_FILES
-import ast
-from .compact_code_visitor import CompactCodeVisitor
-from .ast_utils import get_base_classes
+from .file_utils import find_python_files
 
 
 def read_compact_notation_guide(notation_file: str) -> str:
     """Lê o guia de notação compacta do arquivo."""
     try:
-        with open(notation_file, "r", encoding="utf-8") as f:
+        with open(notation_file, encoding="utf-8") as f:
             return f.read()
     except Exception as e:
         print(f"Erro ao ler o guia de notação compacta: {e}")
@@ -56,7 +55,7 @@ def process_files(python_files, verbose):
 
     for file_path in python_files:
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 file_content = f.read()
             
             # Parse do arquivo e processamento dos nós

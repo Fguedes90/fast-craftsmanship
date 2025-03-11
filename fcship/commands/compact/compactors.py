@@ -1,6 +1,6 @@
 import ast
-from typing import Optional, List
-from .ast_utils import get_base_classes, get_parameters, get_return_type, get_type_annotation
+
+from .ast_utils import get_base_classes, get_parameters, get_return_type
 
 
 def get_compact_class_signature(class_node: ast.ClassDef, is_dataclass: bool = False) -> str:

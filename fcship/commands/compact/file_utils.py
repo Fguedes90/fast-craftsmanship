@@ -1,10 +1,10 @@
-import os
 import fnmatch
+import os
+
 from pathlib import Path
-from typing import List
 
 
-def find_python_files(directory: Path, ignore_dirs: List[str], ignore_files: List[str]) -> List[Path]:
+def find_python_files(directory: Path, ignore_dirs: list[str], ignore_files: list[str]) -> list[Path]:
     """Encontra todos os arquivos Python no diretório, ignorando diretórios e arquivos com padrões especificados."""
     python_files = []
     

@@ -1,5 +1,4 @@
 import ast
-from typing import List
 
 
 class CompactCodeVisitor(ast.NodeVisitor):

@@ -1,7 +1,7 @@
 """Commands package for the fast-craftsmanship CLI tool."""
 
 from collections.abc import Callable
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from .api import api
 from .commit.commit import commit
@@ -19,7 +19,7 @@ from .verify import verify
 CommandFunction = Callable[..., Any]
 
 # Command categories with their help text
-COMMAND_CATEGORIES: Dict[str, str] = {
+COMMAND_CATEGORIES: dict[str, str] = {
     "scaffold": "Project Scaffolding & Structure",
     "vcs": "Version Control & Collaboration",
     "github": "GitHub Integration",
@@ -31,7 +31,7 @@ COMMAND_CATEGORIES: Dict[str, str] = {
 }
 
 # Command definitions organized by category
-COMMANDS_BY_CATEGORY: Dict[str, Dict[str, Tuple[CommandFunction, str]]] = {
+COMMANDS_BY_CATEGORY: dict[str, dict[str, tuple[CommandFunction, str]]] = {
     "scaffold": {
         "project": (project, "Initialize and manage project structure"),
         "domain": (domain, "Create and manage domain components"),

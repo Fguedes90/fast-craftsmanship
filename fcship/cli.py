@@ -4,12 +4,10 @@ import typer
 
 from expression import Result
 from rich.console import Console
-from rich.panel import Panel
-from rich.columns import Columns
 from rich.table import Table
 
 from . import __version__
-from .commands import COMMANDS, COMMANDS_BY_CATEGORY, COMMAND_CATEGORIES
+from .commands import COMMAND_CATEGORIES, COMMANDS, COMMANDS_BY_CATEGORY
 from .commands.github.cli import github_app
 
 console = Console()

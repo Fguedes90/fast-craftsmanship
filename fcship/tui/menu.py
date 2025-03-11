@@ -1,18 +1,14 @@
 """Interactive Terminal UI menu for fast-craftsmanship CLI."""
 
 import os
-import sys
 import subprocess
-from typing import Dict, List, Optional, Callable, Any
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt, IntPrompt
+from rich.prompt import Prompt
 from rich.table import Table
-from rich.text import Text
-from rich.padding import Padding
 
-from ..commands import COMMANDS_BY_CATEGORY, COMMAND_CATEGORIES
+from ..commands import COMMAND_CATEGORIES, COMMANDS_BY_CATEGORY
 
 console = Console()
 
@@ -180,7 +176,7 @@ def run_tui() -> None:
                 
                 if cmd_choice.lower() == 'b':
                     break
-                elif cmd_choice.lower() == 'q':
+                if cmd_choice.lower() == 'q':
                     return
                 
                 # Convert choice to command name
@@ -202,12 +198,12 @@ def run_tui() -> None:
                     if option == "1":
                         run_command(cmd_name, show_help=False)
                         break
-                    elif option == "2":
+                    if option == "2":
                         run_command(cmd_name, show_help=True)
                         break
-                    elif option.lower() == 'b':
+                    if option.lower() == 'b':
                         break
-                    elif option.lower() == 'q':
+                    if option.lower() == 'q':
                         return
     
     except KeyboardInterrupt:

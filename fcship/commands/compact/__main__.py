@@ -1,5 +1,6 @@
-import sys
 import argparse
+import sys
+
 from compact_code.cli import main
 from compact_code.token_counter import analyze_file, print_token_analysis
 
@@ -23,9 +24,11 @@ def count_tokens_only():
 
 if __name__ == '__main__':
     # Se apenas a contagem de tokens foi solicitada, sem geração de arquivo
-    if len(sys.argv) > 1 and '--count-tokens' in sys.argv and not any(arg.startswith('-t') or arg.startswith('--target') for arg in sys.argv):
-        if count_tokens_only():
-            sys.exit(0)
+    if (len(sys.argv) > 1 and 
+        '--count-tokens' in sys.argv and 
+        not any(arg.startswith('-t') or arg.startswith('--target') for arg in sys.argv) and
+        count_tokens_only()):
+        sys.exit(0)
     
     # Caso contrário, execute o CLI principal
     main()

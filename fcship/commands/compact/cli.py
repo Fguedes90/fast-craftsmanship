@@ -1,14 +1,12 @@
 """CLI interface for the compact code command."""
 
 import argparse
-import sys
-from typing import List, Optional
 
 from fcship.commands.compact.config import (
-    DEFAULT_OUTPUT_FILE,
     COMPACT_NOTATION_FILE,
+    DEFAULT_OUTPUT_FILE,
     IGNORE_DIRS,
-    IGNORE_FILES
+    IGNORE_FILES,
 )
 from fcship.commands.compact.generator import generate_compact_code_with_config
 from fcship.commands.compact.token_counter import analyze_file, print_token_analysis

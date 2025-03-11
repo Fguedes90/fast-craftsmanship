@@ -71,7 +71,7 @@ def run_command(command: list[str], status_message: str, console: Console):
         yield Ok(output)
     except Exception as e:
         # This is for any other unexpected exceptions
-        error_msg = f"Unexpected error: {str(e)}"
+        error_msg = f"Unexpected error: {e!s}"
         yield Error(DbError.MigrationError(" ".join(command), error_msg))
         return
 

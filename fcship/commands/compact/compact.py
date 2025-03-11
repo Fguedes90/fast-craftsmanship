@@ -1,12 +1,13 @@
 """Entry point for the compact command."""
 
 import sys
-from typing import Optional, Sequence
+
+from collections.abc import Sequence
 
 from .cli import main
 
 
-def compact(args: Optional[Sequence[str]] = None) -> int:
+def compact(args: Sequence[str] | None = None) -> int:
     """Execute the compact command.
     
     Args:

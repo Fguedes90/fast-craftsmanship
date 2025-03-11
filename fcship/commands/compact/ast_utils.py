@@ -1,5 +1,4 @@
 import ast
-from typing import Optional, List
 
 __all__ = [
     'get_base_classes',
@@ -35,7 +34,7 @@ def get_parameters(args: ast.arguments) -> str:
     return ', '.join(params)
 
 
-def get_return_type(returns: Optional[ast.expr]) -> str:
+def get_return_type(returns: ast.expr | None) -> str:
     """Obtém o tipo de retorno de uma função."""
     if returns is None:
         return ''

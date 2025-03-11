@@ -37,8 +37,7 @@ def count_tokens(text, model="gpt-4o"):
             
         tokens = encoding.encode(text)
         return len(tokens)
-    else:
-        return estimate_tokens_approx(text)
+    return estimate_tokens_approx(text)
 
 
 def estimate_tokens_approx(text):
@@ -119,7 +118,7 @@ def analyze_file(file_path, model="gpt-4o"):
     file_size_mb = file_size_kb / 1024
     
     # Ler o arquivo
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         text = f.read()
     
     # Contar tokens
@@ -175,10 +174,7 @@ def print_token_analysis(stats):
         percentage = data["percentage_context"]
         
         # Formatar o custo
-        if cost < 0.01:
-            cost_str = f"${cost * 100:.2f} centavos"
-        else:
-            cost_str = f"${cost:.2f}"
+        cost_str = f"${cost * 100:.2f} centavos" if cost < 0.01 else f"${cost:.2f}"
             
         # Alertar para contexto muito cheio
         if percentage > 90:
