@@ -20,10 +20,20 @@ on:
 # Permissões necessárias para deploy no GitHub Pages
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+# Configuração do ambiente para GitHub Pages
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,18 +49,27 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material>=9.6.7 
+          pip install mkdocs>=1.6.0 mkdocs-material>=9.6.7 
           pip install mkdocstrings>=0.29.0 mkdocstrings-python>=1.16.5 mkdocs-autorefs>=1.4.1
+          pip install pillow cairosvg  # Para ícones SVG
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build documentation
+        run: |
+          mkdocs build
 
       - name: Create .nojekyll file
         run: |
-          mkdir -p site
           touch site/.nojekyll
-
-      - name: Build and deploy documentation
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          mkdocs gh-deploy --force
+          echo "theme: material" > site/.mkdocs-material-theme
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'site'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

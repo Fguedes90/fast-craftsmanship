@@ -3,12 +3,29 @@ site_description: A CLI tool to accelerate project development using best practi
 site_url: https://fguedes90.github.io/fast-craftsmanship/
 repo_url: https://github.com/Fguedes90/fast-craftsmanship
 repo_name: Fguedes90/fast-craftsmanship
+use_directory_urls: true
+strict: false
 
 theme:
   name: material
+  custom_dir: docs/overrides
   palette:
-    primary: indigo
-    accent: indigo
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   font:
     text: Roboto
     code: Roboto Mono
@@ -22,11 +39,21 @@ theme:
     - navigation.top
     - content.code.copy
     - content.code.annotate
+    - search.highlight
+    - search.share
   language: en
   favicon: assets/images/favicon.png
   include_search_page: true
   search_index_only: true
 
+# Extras para o tema
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Fguedes90
+  generator: false
+
+# Extensions para Markdown
 markdown_extensions:
   - admonition
   - pymdownx.highlight:
@@ -45,7 +72,10 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.tasklist:
       custom_checkbox: true
+  - toc:
+      permalink: true
 
+# Plugins
 plugins:
   - search
   - mkdocstrings:
@@ -56,6 +86,7 @@ plugins:
             show_source: true
             docstring_style: google
 
+# Navegação
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
