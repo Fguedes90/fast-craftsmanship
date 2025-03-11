@@ -36,8 +36,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          uv pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python mkdocs-autorefs
       
       - name: Build documentation
         run: mkdocs build
