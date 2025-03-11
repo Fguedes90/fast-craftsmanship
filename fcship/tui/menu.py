@@ -104,8 +104,18 @@ def display_command_options(category_id: str, command_name: str):
     options_table = Table(box=None)
     options_table.add_column("Option", style="cyan", justify="right")
     options_table.add_column("Action", style="green")
-    options_table.add_row("1", f"Run '{command_name}' command")
-    options_table.add_row("2", f"Show '{command_name}' help")
+    
+    # Opções especiais para comandos com subcomandos
+    if command_name == "github":
+        options_table.add_row("1", "Show GitHub commands")
+        options_table.add_row("2", "Use interactive GitHub menu")
+    elif command_name == "docs":
+        options_table.add_row("1", "Show docs commands")
+        options_table.add_row("2", "Use interactive docs menu")
+    else:
+        options_table.add_row("1", f"Run '{command_name}' command")
+        options_table.add_row("2", f"Show '{command_name}' help")
+    
     options_table.add_row("b", "Go back to commands list")
     options_table.add_row("q", "Quit")
     
@@ -116,10 +126,24 @@ def display_command_options(category_id: str, command_name: str):
 def run_command(command_name: str, show_help: bool = False):
     """Run a command or show its help."""
     clear_screen()
-    if show_help:
-        cmd = ["python", "-m", "fcship.cli", command_name, "--help"]
+    
+    # Tratamento especial para o comando github, que é um sub-aplicativo Typer
+    if command_name == "github":
+        if show_help:
+            cmd = ["python", "-m", "fcship.cli", "github", "--help"]
+        else:
+            # Para o comando github sem argumentos, mostrar a ajuda é o comportamento padrão
+            cmd = ["python", "-m", "fcship.cli", "github"]
+    elif command_name == "docs":
+        if show_help:
+            cmd = ["python", "-m", "fcship.cli", "docs", "--help"]
+        else:
+            cmd = ["python", "-m", "fcship.cli", "docs"]
     else:
-        cmd = ["python", "-m", "fcship.cli", command_name]
+        if show_help:
+            cmd = ["python", "-m", "fcship.cli", command_name, "--help"]
+        else:
+            cmd = ["python", "-m", "fcship.cli", command_name]
     
     console.print(f"[bold]Running: [green]{' '.join(cmd)}[/green][/bold]")
     console.print()
@@ -141,6 +165,151 @@ def run_command(command_name: str, show_help: bool = False):
     
     console.print()
     input("Press Enter to continue...")
+
+def display_github_menu():
+    """Display the GitHub submenu."""
+    clear_screen()
+    display_title()
+    
+    console.print("[bold]GitHub Commands:[/bold]")
+    console.print()
+    
+    table = Table(show_header=True, header_style="bold", box=None)
+    table.add_column("#", style="cyan", justify="right")
+    table.add_column("Command", style="green")
+    table.add_column("Description", style="yellow")
+    
+    commands = [
+        ("repos", "List all your GitHub repositories"),
+        ("branches", "List branches in a GitHub repository"),
+        ("issues", "List open issues in a GitHub repository"),
+        ("prs", "List pull requests for a repository"),
+        ("actions", "GitHub Actions related commands"),
+        ("setup", "GitHub repository setup commands"),
+    ]
+    
+    for i, (cmd_name, help_text) in enumerate(commands, 1):
+        table.add_row(str(i), cmd_name, help_text)
+    
+    console.print(table)
+    console.print()
+    console.print("[bold]Select a GitHub command (or 'b' to go back, 'q' to quit):[/bold]")
+    
+    return commands
+
+def run_github_command(subcmd: str):
+    """Run a GitHub subcommand."""
+    clear_screen()
+    cmd = ["python", "-m", "fcship.cli", "github", subcmd]
+    
+    console.print(f"[bold]Running: [green]{' '.join(cmd)}[/green][/bold]")
+    console.print()
+    
+    try:
+        process = subprocess.Popen(cmd)
+        process.wait()
+        
+        if process.returncode == 0:
+            console.print()
+            console.print("[bold green]Command completed successfully.[/bold green]")
+        else:
+            console.print()
+            console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
+    except Exception as e:
+        console.print()
+        console.print(f"[bold red]Error: {e}[/bold red]")
+    
+    console.print()
+    input("Press Enter to continue...")
+
+def display_docs_options(command_name: str):
+    """Display options for docs command."""
+    clear_screen()
+    display_title()
+    
+    commands = {
+        "setup": "Configurar MkDocs interativamente",
+        "serve": "Iniciar servidor de desenvolvimento do MkDocs",
+        "build": "Construir documentação para produção",
+    }
+    
+    help_text = commands.get(command_name, "Documentation command")
+    
+    panel = Panel(
+        f"[bold]docs {command_name}[/bold]: {help_text}",
+        border_style="green",
+        padding=(1, 2)
+    )
+    console.print(panel)
+    console.print()
+    
+    options_table = Table(box=None)
+    options_table.add_column("Option", style="cyan", justify="right")
+    options_table.add_column("Action", style="green")
+    options_table.add_row("1", f"Run 'docs {command_name}' command")
+    options_table.add_row("2", f"Show 'docs {command_name}' help")
+    options_table.add_row("b", "Go back to docs commands")
+    options_table.add_row("q", "Quit")
+    
+    console.print(options_table)
+    console.print()
+    console.print("[bold]Select an option:[/bold]")
+
+def run_docs_command(subcmd: str, show_help: bool = False):
+    """Run a docs subcommand."""
+    clear_screen()
+    if show_help:
+        cmd = ["python", "-m", "fcship.cli", "docs", subcmd, "--help"]
+    else:
+        cmd = ["python", "-m", "fcship.cli", "docs", subcmd]
+    
+    console.print(f"[bold]Running: [green]{' '.join(cmd)}[/green][/bold]")
+    console.print()
+    
+    try:
+        process = subprocess.Popen(cmd)
+        process.wait()
+        
+        if process.returncode == 0:
+            console.print()
+            console.print("[bold green]Command completed successfully.[/bold green]")
+        else:
+            console.print()
+            console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
+    except Exception as e:
+        console.print()
+        console.print(f"[bold red]Error: {e}[/bold red]")
+    
+    console.print()
+    input("Press Enter to continue...")
+
+def display_docs_menu():
+    """Display the docs submenu."""
+    clear_screen()
+    display_title()
+    
+    console.print("[bold]Documentation Commands:[/bold]")
+    console.print()
+    
+    table = Table(show_header=True, header_style="bold", box=None)
+    table.add_column("#", style="cyan", justify="right")
+    table.add_column("Command", style="green")
+    table.add_column("Description", style="yellow")
+    
+    commands = [
+        ("setup", "Configurar MkDocs interativamente"),
+        ("serve", "Iniciar servidor de desenvolvimento do MkDocs"),
+        ("build", "Construir documentação para produção"),
+    ]
+    
+    for i, (cmd_name, help_text) in enumerate(commands, 1):
+        table.add_row(str(i), cmd_name, help_text)
+    
+    console.print(table)
+    console.print()
+    console.print("[bold]Select a documentation command (or 'b' to go back, 'q' to quit):[/bold]")
+    
+    return commands
 
 def run_tui() -> None:
     """Run the Terminal UI application."""
@@ -188,23 +357,87 @@ def run_tui() -> None:
                 
                 cmd_name = cmd_names[cmd_index]
                 
-                while True:
-                    # Display command options
-                    display_command_options(category_id, cmd_name)
-                    
-                    # Get option selection
-                    option = Prompt.ask("> ", choices=["1", "2", "b", "q"])
-                    
-                    if option == "1":
-                        run_command(cmd_name, show_help=False)
-                        break
-                    if option == "2":
-                        run_command(cmd_name, show_help=True)
-                        break
-                    if option.lower() == 'b':
-                        break
-                    if option.lower() == 'q':
-                        return
+                # GitHub menu requires special handling
+                if cmd_name == "github" and category_id == "github":
+                    while True:
+                        display_command_options(category_id, cmd_name)
+                        option = Prompt.ask("> ", choices=["1", "2", "b", "q"])
+                        
+                        if option == "1":
+                            run_command(cmd_name, show_help=True)
+                            break
+                        if option == "2":
+                            # GitHub interactive submenu
+                            while True:
+                                github_commands = display_github_menu()
+                                gh_choice = Prompt.ask("> ", choices=["b", "q"] + [str(i) for i in range(1, len(github_commands) + 1)])
+                                
+                                if gh_choice.lower() == 'b':
+                                    break
+                                if gh_choice.lower() == 'q':
+                                    return
+                                
+                                gh_index = int(gh_choice) - 1
+                                if gh_index < 0 or gh_index >= len(github_commands):
+                                    console.print("[bold red]Invalid selection.[/bold red]")
+                                    continue
+                                
+                                gh_subcmd = github_commands[gh_index][0]
+                                run_github_command(gh_subcmd)
+                            break
+                        if option.lower() == 'b':
+                            break
+                        if option.lower() == 'q':
+                            return
+                elif cmd_name == "docs" and category_id == "docs":
+                    while True:
+                        display_command_options(category_id, cmd_name)
+                        option = Prompt.ask("> ", choices=["1", "2", "b", "q"])
+                        
+                        if option == "1":
+                            run_command(cmd_name, show_help=True)
+                            break
+                        if option == "2":
+                            # Docs interactive submenu
+                            while True:
+                                docs_commands = display_docs_menu()
+                                docs_choice = Prompt.ask("> ", choices=["b", "q"] + [str(i) for i in range(1, len(docs_commands) + 1)])
+                                
+                                if docs_choice.lower() == 'b':
+                                    break
+                                if docs_choice.lower() == 'q':
+                                    return
+                                
+                                docs_index = int(docs_choice) - 1
+                                if docs_index < 0 or docs_index >= len(docs_commands):
+                                    console.print("[bold red]Invalid selection.[/bold red]")
+                                    continue
+                                
+                                docs_subcmd = docs_commands[docs_index][0]
+                                run_docs_command(docs_subcmd)
+                            break
+                        if option.lower() == 'b':
+                            break
+                        if option.lower() == 'q':
+                            return
+                else:
+                    while True:
+                        # Display command options
+                        display_command_options(category_id, cmd_name)
+                        
+                        # Get option selection
+                        option = Prompt.ask("> ", choices=["1", "2", "b", "q"])
+                        
+                        if option == "1":
+                            run_command(cmd_name, show_help=False)
+                            break
+                        if option == "2":
+                            run_command(cmd_name, show_help=True)
+                            break
+                        if option.lower() == 'b':
+                            break
+                        if option.lower() == 'q':
+                            return
     
     except KeyboardInterrupt:
         console.print("\n[bold yellow]Menu interrupted. Exiting...[/bold yellow]")

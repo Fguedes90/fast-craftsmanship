@@ -145,6 +145,8 @@ for category, commands in COMMANDS_BY_CATEGORY.items():
         category_app = quality_app
     elif category == "db":
         category_app = db_app
+    elif category == "docs":
+        category_app = docs_app
     elif category == "utils":
         category_app = utils_app
     
@@ -160,6 +162,7 @@ app.add_typer(scaffold_app, name="scaffold")
 app.add_typer(vcs_app, name="vcs")
 app.add_typer(quality_app, name="quality")
 app.add_typer(db_app, name="db")
+app.add_typer(docs_app, name="docs")
 app.add_typer(utils_app, name="utils")
 
 # Add the GitHub commands
