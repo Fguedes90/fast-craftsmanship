@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import typer
-
 from expression import Error, Ok, Result, effect
 from expression.collections import Map
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Literal
 
 import typer
-
 from expression import Error, Ok, effect, tagged_union
 from rich.console import Console
 

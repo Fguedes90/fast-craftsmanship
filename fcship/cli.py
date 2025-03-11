@@ -1,7 +1,6 @@
 """CLI application entry point for fast-craftsmanship tool."""
 
 import typer
-
 from expression import Result
 from rich.console import Console
 from rich.table import Table

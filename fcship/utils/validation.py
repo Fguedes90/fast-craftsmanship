@@ -4,7 +4,6 @@ from collections.abc import Callable, Sequence
 from typing import TypeVar
 
 import typer
-
 from expression import Error, Ok, Option, Result, pipe
 
 from .functional import option_to_result

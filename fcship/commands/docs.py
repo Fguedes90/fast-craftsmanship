@@ -3,12 +3,10 @@
 Este módulo contém comandos para gerenciar a documentação usando MkDocs.
 """
 import subprocess
-
 from pathlib import Path
 from typing import Any
 
 import questionary
-
 from expression import Error, Ok, Result
 from rich.console import Console
 

@@ -1,12 +1,10 @@
 """Error handling utilities following Railway-Oriented Programming pattern."""
 
 import asyncio
-
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar, overload
 
 import typer
-
 from expression import Error, Ok, Result, pipe
 
 from fcship.tui import DisplayContext, error_message

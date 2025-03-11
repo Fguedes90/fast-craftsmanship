@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Any, Protocol, TypeVar
 
 import typer
-
 from expression import Error, Ok, Result, effect, pipe
 
 from fcship.tui.errors import DisplayError

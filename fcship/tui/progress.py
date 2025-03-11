@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from multiprocessing.pool import Pool

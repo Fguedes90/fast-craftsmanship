@@ -1,7 +1,6 @@
 """Commit command implementation with LLM assistance for conventional commits."""
 
 import typer
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt

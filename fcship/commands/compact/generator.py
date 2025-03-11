@@ -1,5 +1,4 @@
 import ast
-
 from pathlib import Path
 
 from .compact_code_visitor import CompactCodeVisitor

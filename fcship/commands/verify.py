@@ -1,7 +1,6 @@
 """Verification commands using functional programming principles."""
 
 import subprocess
-
 from typing import Literal, TypeVar
 
 from expression import Error, Ok, Result, pipe, tagged_union

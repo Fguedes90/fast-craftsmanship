@@ -1,12 +1,10 @@
 """CLI interface for GitHub commands."""
 
 import os
-
 from dataclasses import dataclass, field
 from typing import Literal
 
 import typer
-
 from expression import Error, Ok, Result, effect, tagged_union
 from rich.console import Console
 

@@ -2,7 +2,6 @@
 
 import asyncio
 import functools
-
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, ParamSpec, TypeVar
 

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import NamedTuple
 
 import typer
-
 from expression import Error, Ok, Option, Result, effect, pipe, result
 from expression.collections import Block, Map
 

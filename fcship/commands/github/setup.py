@@ -9,7 +9,6 @@ for CI/CD, branch protection, and environment configuration.
 from typing import Annotated
 
 import typer
-
 from expression import Error, Ok, Result, effect, pipe
 from pydantic import BaseModel
 from rich.console import Console

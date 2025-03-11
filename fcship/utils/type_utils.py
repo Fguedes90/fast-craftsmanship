@@ -4,7 +4,6 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 import typer
-
 from expression import Error, Ok, Result
 
 T = TypeVar("T")
