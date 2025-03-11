@@ -54,6 +54,12 @@ jobs:
           pip install mkdocstrings>=0.29.0 mkdocstrings-python>=1.16.5 mkdocs-autorefs>=1.4.1
           pip install pillow cairosvg  # Para ícones SVG
 
+      # Criar diretório de sobreposição do tema
+      - name: Create theme override directory
+        run: |
+          mkdir -p docs/overrides
+          touch docs/overrides/.gitkeep
+
       # Criar deployment no GitHub
       - name: Create GitHub deployment
         id: create_deployment
