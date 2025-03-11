@@ -151,7 +151,7 @@ class TestTokenCounter:
         # Verificar chamadas de funções
         mock_isfile.assert_called_once_with(file_path)
         mock_getsize.assert_called_once_with(file_path)
-        mock_file.assert_called_once_with(file_path, 'r', encoding='utf-8')
+        mock_file.assert_called_once_with(file_path, encoding='utf-8')
         mock_count_tokens.assert_called_once()
         assert mock_count_tokens.call_args[0][0] == "Conteúdo do arquivo para teste"
         assert mock_count_tokens.call_args[0][1] == "gpt-4o"
