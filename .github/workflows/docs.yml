@@ -22,6 +22,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  deployments: write
 
 # Configuração do ambiente para GitHub Pages
 concurrency:
@@ -53,6 +54,17 @@ jobs:
           pip install mkdocstrings>=0.29.0 mkdocstrings-python>=1.16.5 mkdocs-autorefs>=1.4.1
           pip install pillow cairosvg  # Para ícones SVG
 
+      # Criar deployment no GitHub
+      - name: Create GitHub deployment
+        id: create_deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          environment: github-pages
+          initial-status: "in_progress"
+          description: "Deployment of documentation for commit ${{ github.sha }}"
+          ref: ${{ github.sha }}
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
@@ -73,3 +85,33 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # Atualizar o status do deployment
+      - name: Update deployment status
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          deployment-id: ${{ steps.create_deployment.outputs.deployment_id }}
+          state: "success"
+          environment-url: https://fguedes90.github.io/fast-craftsmanship/
+
+      # Em caso de falha, atualizar o status do deployment
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          deployment-id: ${{ steps.create_deployment.outputs.deployment_id }}
+          state: "failure"
+      
+      # Criar uma tag de release para a documentação
+      - name: Create Docs Tag
+        if: success() && github.event_name != 'pull_request'
+        run: |
+          CURRENT_DATE=$(date '+%Y%m%d%H%M%S')
+          TAG_NAME="docs-${CURRENT_DATE}"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag -a "${TAG_NAME}" -m "Documentation updated at ${CURRENT_DATE}"
+          git push origin "${TAG_NAME}"
