@@ -44,7 +44,7 @@ exclude = ["api*", "tests*"]
 fast-craftsmanship = { workspace = true }
 
 [tool.ruff]
-target-version = "0.2.3"
+target-version = "py312"
 line-length = 100
 indent-width = 4
 
