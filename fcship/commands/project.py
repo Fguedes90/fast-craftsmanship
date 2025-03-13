@@ -240,7 +240,7 @@ def create_project_files(ctx: ProjectContext):
 @effect.result[str, ProjectError]()
 def handle_project_error(error: ProjectError, ctx: Optional[DisplayContext] = None):
     """Handle project errors with proper UI feedback."""
-    display_ctx = ctx or DisplayContext(console=Console())
+    display_ctx = ctx.obj if ctx.obj is not None else DisplayContext(console=Console())
 
     match error:
         case ProjectError(tag="validation_error") if error.validation_error is not None:
