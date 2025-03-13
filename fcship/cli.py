@@ -1,4 +1,8 @@
-"""CLI application entry point for fast-craftsmanship tool."""
+"""CLI Application Entry Point for Fast-Craftsmanship Tool
+
+This tool helps you manage your FastAPI project’s structure and automate code
+generation following domain-driven design principles and FastAPI best practices.
+"""
 
 import typer
 import functools
@@ -74,7 +78,7 @@ def tui_callback(value: bool) -> None:
 
 
 @app.callback()
-def callback(
+def main_callback(
     version: bool = typer.Option(
         None,
         "--version",
@@ -100,7 +104,14 @@ def callback(
         is_eager=True,
     ),
 ) -> None:
-    """Fast-craftsmanship CLI tool for FastAPI projects."""
+    """
+    Fast-Craftsmanship CLI Tool for FastAPI Projects.
+
+    Global Options:
+      --version, -v     Show version information and exit.
+      --categories, -c  Display available command categories and exit.
+      --tui, -t         Launch the interactive Terminal UI menu.
+    """
     pass
 
 
@@ -160,13 +171,13 @@ app.add_typer(github_app, name="github")
 
 @app.command("menu")
 def menu_command() -> None:
-    """Launch the interactive Terminal UI menu."""
+    """Launch the interactive Terminal UI menu for fast-craftsmanship."""
     from .tui.menu import run_tui
     run_tui()
 
 
 def main() -> None:
-    """CLI entry point."""
+    """CLI entry point for the Fast-Craftsmanship tool."""
     app()
 
 
