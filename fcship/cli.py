@@ -1,13 +1,15 @@
 """CLI application entry point for fast-craftsmanship tool."""
 
 import typer
+import functools
+from typing import Dict, Optional, Callable, Tuple, Any
+
 from expression import Result
 from rich.console import Console
 from rich.table import Table
-import sys
 
 from . import __version__
-from .commands import COMMAND_CATEGORIES, COMMANDS, COMMANDS_BY_CATEGORY
+from .commands import COMMANDS, COMMANDS_BY_CATEGORY, COMMAND_CATEGORIES
 from .commands.github.cli import github_app
 
 console = Console()
@@ -28,7 +30,16 @@ quality_app = typer.Typer(help=COMMAND_CATEGORIES["quality"])
 db_app = typer.Typer(help=COMMAND_CATEGORIES["db"])
 docs_app = typer.Typer(help=COMMAND_CATEGORIES["docs"])
 scraper_app = typer.Typer(help=COMMAND_CATEGORIES["scraper"])
-utils_app = typer.Typer(help=COMMAND_CATEGORIES["utils"])
+
+# Map category names to their respective app instances
+CATEGORY_APPS: Dict[str, typer.Typer] = {
+    "scaffold": scaffold_app,
+    "vcs": vcs_app,
+    "quality": quality_app,
+    "db": db_app,
+    "docs": docs_app,
+    "scraper": scraper_app
+}
 
 
 def version_callback(value: bool) -> None:
@@ -95,26 +106,24 @@ def callback(
 
 def handle_result(result: Result) -> None:
     """Handle Result type from commands"""
-    if hasattr(result, "ok"):
+    if hasattr(result, "ok") and result.ok is not None:
         if isinstance(result.ok, str):
             console.print(f"[green]{result.ok}[/green]")
-    elif hasattr(result, "error"):
+        else:
+            console.print("[green]Command completed successfully[/green]")
+    elif hasattr(result, "error") and result.error is not None:
         console.print(f"[red]Error: {result.error}[/red]")
         raise typer.Exit(1)
     else:
         console.print("[yellow]Warning: Command returned unexpected result type[/yellow]")
 
 
-def wrap_command(cmd):
-    """Wrap command to handle Result type"""
-
-    def wrapper(*args, **kwargs):
+def wrap_command(cmd: Callable) -> Callable:
+    """Wrap command to handle Result type while preserving signature"""
+    @functools.wraps(cmd)  # This preserves the function signature
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
-            # For compact command, we don't need to do any special argument processing here
-            # The compact_command function itself will handle the sys.argv parsing
-            # This will work for both direct CLI invocation and programmatic calls
             result = cmd(*args, **kwargs)
-            
             if isinstance(result, Result):
                 handle_result(result)
             return result
@@ -135,22 +144,7 @@ for cmd_name, (cmd_func, help_text) in COMMANDS.items():
 
 # Register category-based commands
 for category, commands in COMMANDS_BY_CATEGORY.items():
-    category_app = None
-    
-    if category == "scaffold":
-        category_app = scaffold_app
-    elif category == "vcs":
-        category_app = vcs_app
-    elif category == "quality":
-        category_app = quality_app
-    elif category == "db":
-        category_app = db_app
-    elif category == "docs":
-        category_app = docs_app
-    elif category == "utils":
-        category_app = utils_app
-    
-    if category_app:
+    if category_app := CATEGORY_APPS.get(category):
         for cmd_name, (cmd_func, help_text) in commands.items():
             wrapped = wrap_command(cmd_func)
             wrapped.__name__ = cmd_func.__name__
@@ -158,12 +152,8 @@ for category, commands in COMMANDS_BY_CATEGORY.items():
             category_app.command(name=cmd_name, help=help_text)(wrapped)
 
 # Add category typers to main app
-app.add_typer(scaffold_app, name="scaffold")
-app.add_typer(vcs_app, name="vcs")
-app.add_typer(quality_app, name="quality")
-app.add_typer(db_app, name="db")
-app.add_typer(docs_app, name="docs")
-app.add_typer(utils_app, name="utils")
+for category, category_app in CATEGORY_APPS.items():
+    app.add_typer(category_app, name=category)
 
 # Add the GitHub commands
 app.add_typer(github_app, name="github")

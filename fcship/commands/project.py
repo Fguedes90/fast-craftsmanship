@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import typer
 from expression import Error, Ok, effect, tagged_union
@@ -238,7 +238,7 @@ def create_project_files(ctx: ProjectContext):
 
 
 @effect.result[str, ProjectError]()
-def handle_project_error(error: ProjectError, ctx: DisplayContext = None):
+def handle_project_error(error: ProjectError, ctx: Optional[DisplayContext] = None):
     """Handle project errors with proper UI feedback."""
     display_ctx = ctx or DisplayContext(console=Console())
 
@@ -257,14 +257,14 @@ def handle_project_error(error: ProjectError, ctx: DisplayContext = None):
 
 
 @effect.result[None, ProjectError]()
-def display_next_steps(name: str, display_ctx: DisplayContext):
+def display_next_steps(name: str, display_ctx: Optional[DisplayContext]):
     """Display next steps after project creation."""
     try:
         next_steps = f"""
 1. [cyan]cd[/cyan] {name}
 2. [cyan]python -m venv .venv && source .venv/bin/activate[/cyan]
 3. [cyan]pip install -e ".[dev]"[/cyan]
-4. Start creating your domains with: [green]craftsmanship domain create <name>[/green]
+4. Start creating your domains with: [green]craftsmanship domain create <n>[/green]
 """
         display_ctx.console.print(Panel(next_steps, title="[bold]Next Steps", border_style="green"))
         yield Ok(None)
@@ -273,7 +273,7 @@ def display_next_steps(name: str, display_ctx: DisplayContext):
 
 
 @effect.result[str, ProjectError]()
-def init_project(name: str, display_ctx: DisplayContext = None):
+def init_project(name: str, display_ctx: Optional[DisplayContext] = None):
     """Initialize new project structure."""
     ctx = display_ctx or DisplayContext(console=Console())
 
@@ -321,14 +321,20 @@ def init_project(name: str, display_ctx: DisplayContext = None):
 def project(
     operation: str = typer.Argument(..., help="Operation to perform [init]"),
     name: str = typer.Argument(..., help="Name of the project"),
-    ctx: DisplayContext = None,
+    ctx: Optional[DisplayContext] = None,
 ):
-    """Initialize new project with basic structure."""
+    """Initialize and manage project structure.
+    
+    Available operations:
+    - init: Create a new project structure with the specified name
+    
+    Example: craftsmanship project init myproject
+    """
     display_ctx = ctx or DisplayContext(console=Console())
 
     # Validate operation
     op_result = yield from validate_project_operation(operation)
-    if op_result.is_error():
+    if (op_result.is_error()):
         yield from handle_project_error(op_result.error, display_ctx)
         return
 

@@ -34,7 +34,7 @@ COMMAND_CATEGORIES: dict[str, str] = {
 # Command definitions organized by category
 COMMANDS_BY_CATEGORY: dict[str, dict[str, tuple[CommandFunction, str]]] = {
     "scaffold": {
-        "project": (project, "Initialize and manage project structure"),
+        "project": (project, "Initialize and manage project structure (init <name>)"),
         "domain": (domain, "Create and manage domain components"),
         "service": (service, "Create and manage service layer components"),
         "api": (api, "Generate API endpoints and schemas"),
@@ -60,9 +60,6 @@ COMMANDS_BY_CATEGORY: dict[str, dict[str, tuple[CommandFunction, str]]] = {
         "setup": (setup_command, "Configurar MkDocs interativamente"),
         "serve": (serve_docs, "Iniciar servidor de desenvolvimento do MkDocs"),
         "build": (build_docs, "Construir documentação para produção"),
-    },
-    "scraper": {
-        "scraper": (lambda *args, **kwargs: None, "Web scraping tools and utilities"),
     },
 }
 

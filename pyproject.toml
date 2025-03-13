@@ -20,12 +20,10 @@ dependencies = [
     "pyyaml>=6.0.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "fast-craftsmanship",
     "ruff>=0.9.8",
 ]
-
 docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.6.7",
@@ -42,6 +40,9 @@ exclude = ["api*", "tests*"]
 
 [tool.uv.sources]
 fast-craftsmanship = { workspace = true }
+
+[tool.uv]
+package = true
 
 [tool.ruff]
 target-version = "py312"    
