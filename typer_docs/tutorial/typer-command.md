@@ -74,6 +74,7 @@ def bye(name: Optional[str] = None):
 
 
 if __name__ == "__main__":
+    app()  # dispara a CLI
     app()
 ```
 
