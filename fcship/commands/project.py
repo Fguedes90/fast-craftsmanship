@@ -321,7 +321,7 @@ def init_project(name: str, display_ctx: Optional[DisplayContext] = None):
 def project(
     operation: str = typer.Argument(..., help="Operation to perform [init]"),
     name: str = typer.Argument(..., help="Name of the project"),
-    ctx: Optional[DisplayContext] = None,
+    ctx: Optional[DisplayContext] = typer.Option(None, hidden=True),  # <-- changed here
 ):
     """Initialize and manage project structure.
     
