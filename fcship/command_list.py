@@ -11,7 +11,7 @@ def load_commands() -> dict[str, Command]:
     for file in os.listdir(commands_dir):
         if file.endswith('.py') and not file.startswith('__'):
             module_name = file[:-3]
-            module = importlib.import_module(f'ai_dev_toolkit.commands.{module_name}')
+            module = importlib.import_module(f'fcship.commands.{module_name}')
             
             for name, obj in inspect.getmembers(module):
                 if (inspect.isclass(obj) 

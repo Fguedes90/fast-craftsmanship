@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.panel import Panel
 from .command_list import COMMANDS
 import dotenv
-from typing import Any
+from typing import Any, Optional
 
 dotenv.load_dotenv()
 
@@ -11,6 +11,7 @@ app = typer.Typer(
     help="AI Dev Toolkit - A developer's best friend",
     add_completion=False,
 )
+
 console = Console()
 
 @app.command()
@@ -31,8 +32,14 @@ def start():
 
 def register_command(name: str, command: Any) -> None:
     @app.command(name=name)
-    def dynamic_command(param: str | None = typer.Argument(None)):
-        command.execute(param)
+    def dynamic_command(
+        operation: Optional[str] = typer.Argument(None, help="Operation to perform"),
+        name: Optional[str] = typer.Argument(None, help="Name parameter"),
+    ):
+        if operation is None:
+            command.display_info()
+            return
+        command.execute(operation, name)
 
 # Dynamically register all commands
 for name, command in COMMANDS.items():
@@ -42,5 +49,8 @@ for name, command in COMMANDS.items():
 def version():
     console.print("[bold cyan]AI Dev Toolkit v0.1.0[/] 🚀")
 
-if __name__ == "__main__":
+def main():
     app()
+
+if __name__ == "__main__":
+    main()

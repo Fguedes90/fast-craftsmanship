@@ -10,6 +10,7 @@ from expression.collections import Block, Map
 from rich.console import Console
 from rich.panel import Panel
 
+from .base import Command
 from fcship.templates.project_templates import get_project_templates
 from fcship.tui.display import DisplayContext, error_message, success_message
 from fcship.utils.error_handling import handle_command_errors
@@ -349,3 +350,19 @@ def project(
     else:
         yield Error(ProjectError.ValidationError(f"Unsupported operation: {operation}"))
         return
+
+
+class ProjectCommand(Command):
+    def __init__(self):
+        super().__init__(
+            name="project",
+            help="Initialize and manage project structure.\n\nAvailable operations:\n- init: Create a new project structure with the specified name\n\nExample: craftsmanship project init myproject"
+        )
+    
+    def execute(self, operation: str, name: str, ctx: Optional[DisplayContext] = None):
+        """Execute the project command with the given operation and name."""
+        result = project(operation, name, ctx)
+        if result.is_error():
+            handle_project_error(result.error, ctx)
+            return
+        return result.ok
