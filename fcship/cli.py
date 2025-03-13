@@ -135,12 +135,11 @@ def wrap_command(cmd: Callable) -> Callable:
 
 
 # Register commands in both flat structure (for backward compatibility)
-# and in category-based structure
-for cmd_name, (cmd_func, help_text) in COMMANDS.items():
-    wrapped = wrap_command(cmd_func)
-    wrapped.__name__ = cmd_func.__name__
-    wrapped.__doc__ = cmd_func.__doc__
-    app.command(name=cmd_name, help=help_text)(wrapped)
+# for cmd_name, (cmd_func, help_text) in COMMANDS.items():
+#     wrapped = wrap_command(cmd_func)
+#     wrapped.__name__ = cmd_func.__name__
+#     wrapped.__doc__ = cmd_func.__doc__
+#     app.command(name=cmd_name, help=help_text)(wrapped)
 
 # Register category-based commands
 for category, commands in COMMANDS_BY_CATEGORY.items():
