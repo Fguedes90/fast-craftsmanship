@@ -257,9 +257,8 @@ dependencies = [
     { name = "typer" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
-    { name = "fast-craftsmanship" },
     { name = "ruff" },
 ]
 docs = [
@@ -273,6 +272,10 @@ docs = [
 requires-dist = [
     { name = "expression", specifier = ">=5.6.0" },
     { name = "hypothesis", specifier = ">=6.127.1" },
+    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.0" },
+    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.6.7" },
+    { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.29.0" },
+    { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.16.5" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pygithub", specifier = ">=2.6.1" },
     { name = "pytest", specifier = ">=8.3.4" },
@@ -282,20 +285,9 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "questionary", specifier = ">=2.0.1" },
     { name = "rich-click", specifier = ">=1.8.3" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.8" },
     { name = "tiktoken", specifier = ">=0.9.0" },
     { name = "typer", specifier = ">=0.15.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "fast-craftsmanship", editable = "." },
-    { name = "ruff", specifier = ">=0.9.8" },
-]
-docs = [
-    { name = "mkdocs", specifier = ">=1.6.0" },
-    { name = "mkdocs-material", specifier = ">=9.6.7" },
-    { name = "mkdocstrings", specifier = ">=0.29.0" },
-    { name = "mkdocstrings-python", specifier = ">=1.16.5" },
 ]
 
 [[package]]
