@@ -1,2 +1,2 @@
 import typer
-from fcship.commands.project import project  # importe o comando project
+from fcship.commands.project import project  # import the project command
