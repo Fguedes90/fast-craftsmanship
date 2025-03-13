@@ -109,16 +109,22 @@ def bump_version(current: str, bump_type: BumpType) -> str:
 def update_version_in_files(new_version: str) -> None:
     """Update version in pyproject.toml."""
     with open("pyproject.toml", "r") as f:
-        content = f.read()
+        lines = f.readlines()
     
-    new_content = re.sub(
-        r'version = ["\']([^"\']+)["\']',
-        f'version = "{new_version}"',
-        content
-    )
+    # Procurar e atualizar a versão na seção [project]
+    in_project_section = False
+    for i, line in enumerate(lines):
+        if line.strip() == "[project]":
+            in_project_section = True
+        elif line.strip().startswith("[") and line.strip().endswith("]"):
+            in_project_section = False
+        
+        # Atualizar apenas a linha de versão na seção [project]
+        if in_project_section and line.strip().startswith("version ="):
+            lines[i] = f'version = "{new_version}"\n'
     
     with open("pyproject.toml", "w") as f:
-        f.write(new_content)
+        f.writelines(lines)
 
 
 def create_tag_and_push(new_version: str) -> None:

@@ -4,6 +4,7 @@ import typer
 from expression import Result
 from rich.console import Console
 from rich.table import Table
+import sys
 
 from . import __version__
 from .commands import COMMAND_CATEGORIES, COMMANDS, COMMANDS_BY_CATEGORY
@@ -109,11 +110,11 @@ def wrap_command(cmd):
 
     def wrapper(*args, **kwargs):
         try:
-            # Extract actual arguments from kwargs if they exist
-            if "args" in kwargs and "kwargs" in kwargs:
-                args = (kwargs["args"], kwargs["kwargs"])
-                kwargs = {}
+            # For compact command, we don't need to do any special argument processing here
+            # The compact_command function itself will handle the sys.argv parsing
+            # This will work for both direct CLI invocation and programmatic calls
             result = cmd(*args, **kwargs)
+            
             if isinstance(result, Result):
                 handle_result(result)
             return result

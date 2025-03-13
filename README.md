@@ -40,51 +40,51 @@ After installation, use the CLI by invoking `craftsmanship` followed by the desi
 
 - **Project Initialization**
   ```bash
-  craftsmanship project init <project_name>
+  fcship project init <project_name>
   ```
 
 - **Domain Generation**
   ```bash
-  craftsmanship domain create <domain_name>
+  fcship domain create <domain_name>
   ```
 
 - **Service Layer Generation**
   ```bash
-  craftsmanship service create <service_name>
+  fcship service create <service_name>
   ```
 
 - **API Endpoint Generation**
   ```bash
-  craftsmanship api create <api_name>
+  fcship api create <api_name>
   ```
 
 - **Repository Implementation**
   ```bash
-  craftsmanship repo create <repository_name>
+  fcship repo create <repository_name>
   ```
 
 - **Test File Generation**
   ```bash
-  craftsmanship test create <unit|integration> <test_name>
+  fcship test create <unit|integration> <test_name>
   ```
 
 - **Database Migrations**
   ```bash
-  craftsmanship db migration <migration_name>
-  craftsmanship db migrate
-  craftsmanship db rollback
+  fcship db migration <migration_name>
+  fcship db migrate
+  fcship db rollback
   ```
 
 - **Code Verification**
   ```bash
-  craftsmanship verify <all|type|lint|test|format>
+  fcship verify <all|type|lint|test|format>
   ```
 
 ### Additional
 
 - **Version Information**
   ```bash
-  craftsmanship --version
+  fcship --version
   ```
 
 ## Project Structure

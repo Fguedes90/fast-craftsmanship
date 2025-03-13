@@ -1,10 +1,11 @@
 """Entry point for the compact command."""
 
-from typing import Literal
+import sys
+import os
+from typing import Literal, Optional, List, Any
 
-from expression import Error, Ok, Result
+from expression import Error, Ok, Result, pipe
 
-from .cli import parse_arguments
 from .config import (
     COMPACT_NOTATION_FILE,
     DEFAULT_OUTPUT_FILE,
@@ -15,103 +16,77 @@ from .generator import generate_compact_code_with_config
 from .token_counter import analyze_file, print_token_analysis
 
 
-def compact(
-    output_file: str | None = None,
-    project_root: str = ".",
-    notation_file: str | None = None,
-    ignore_dirs: list[str] | None = None,
-    ignore_files: list[str] | None = None,
-    target: str | None = None, 
-    stdout: bool = False,
-    verbose: bool = False,
-    count_tokens: bool = False,
-    token_model: Literal["gpt-4o", "gpt-3.5-turbo", "claude-3-opus"] = "gpt-4o",
-) -> Result[str, str]:
+def compact_command(*args, **kwargs) -> Result[str, str]:
     """Generate compact code representation of Python files.
     
-    Args:
-        output_file: Path to output file (default: compact_code.md)
-        project_root: Project root directory (default: current directory)
-        notation_file: Path to compact notation guide file
-        ignore_dirs: List of directory patterns to ignore
-        ignore_files: List of file patterns to ignore
-        target: Target file or directory to process
-        stdout: Print output to stdout instead of file
-        verbose: Enable verbose output
-        count_tokens: Count tokens in the output file
-        token_model: Model to use for token counting
-        
-    Returns:
-        Result containing path to the output file or error message
-    """
-    try:
-        # Use provided values or defaults from config
-        final_output_file = output_file or DEFAULT_OUTPUT_FILE
-        final_notation_file = notation_file or COMPACT_NOTATION_FILE
-        
-        # Process ignore patterns
-        final_ignore_dirs = IGNORE_DIRS.copy()
-        final_ignore_files = IGNORE_FILES.copy()
-        
-        if ignore_dirs:
-            final_ignore_dirs.extend(ignore_dirs)
-        if ignore_files:
-            final_ignore_files.extend(ignore_files)
-            
-        # Generate compact code
-        result_file = generate_compact_code_with_config(
-            output_file=final_output_file,
-            project_root=project_root,
-            notation_file=final_notation_file,
-            ignore_dirs=final_ignore_dirs,
-            ignore_files=final_ignore_files,
-            target=target,
-            stdout=stdout,
-            verbose=verbose
-        )
-        
-        # Count tokens if requested and output file was generated
-        if count_tokens and result_file and not stdout:
-            stats = analyze_file(result_file, token_model)
-            print_token_analysis(stats)
-            
-        if stdout:
-            return Ok("Compact code generated and printed to stdout")
-        return Ok(f"Compact code generated at {result_file}")
-            
-    except Exception as e:
-        return Error(f"Error generating compact code: {e}")
-
-def compact_command() -> Result[str, str]:
-    """Command-line entry point for the compact command.
+    This command creates a compact representation of Python code in markdown format,
+    which is useful for providing a high-level overview of a codebase or preparing
+    it for analysis by LLMs.
+    
+    Command-line options:
+        --output, -o: Path to output file (default: compact_code.md)
+        --directory, -d: Project root directory (default: current directory)
+        --guide, -g: Path to compact notation guide file
+        --ignore-dirs: Comma-separated list of directories to ignore
+        --ignore-files: Comma-separated list of file patterns to ignore
+        --target, -t: Target file or directory to process
+        --stdout: Print output to stdout instead of file
+        --verbose, -v: Enable verbose output
+        --count-tokens: Count tokens in the output file
+        --token-model: Model to use for token counting
     
     Returns:
         Result containing the output message or error
     """
-    try:
-        args = parse_arguments()
+    # Safeguard for direct CLI invocation through the Typer wrapper
+    if len(sys.argv) > 2 and sys.argv[1] == "compact":
+        # When called from the command line with arguments
+        from .cli import main as compact_main
         
-        # Process ignore patterns
-        ignore_dirs = IGNORE_DIRS.copy()
-        ignore_files = IGNORE_FILES.copy()
+        # Save current argv and replace with our CLI arguments
+        original_argv = sys.argv.copy()
         
-        if args.ignore_dirs:
-            ignore_dirs.extend(args.ignore_dirs.split(","))
-        if args.ignore_files:
-            ignore_files.extend(args.ignore_files.split(","))
-        
-        return compact(
-            output_file=args.output,
-            project_root=args.directory,
-            notation_file=args.guide,
-            ignore_dirs=ignore_dirs,
-            ignore_files=ignore_files,
-            target=args.target,
-            stdout=args.stdout,
-            verbose=args.verbose,
-            count_tokens=args.count_tokens,
-            token_model=args.token_model
-        )
+        try:
+            # Reformat the sys.argv to match what argparse expects
+            # Remove "fcship compact" and keep the rest
+            sys.argv = [sys.argv[0]] + sys.argv[2:]  
             
-    except Exception as e:
-        return Error(f"Error in compact command: {e}") 
+            # Run the command's main function which will use argparse
+            compact_main()
+            return Ok("Compact code generation completed")
+        except Exception as e:
+            return Error(f"Error in compact command: {e}")
+        finally:
+            # Restore original sys.argv
+            sys.argv = original_argv
+    
+    # For programmatic use when arguments are passed directly
+    elif args and args[0]:
+        try:
+            # Handle arguments passed to this function directly
+            from .cli import main as compact_main
+            
+            # Save current argv and replace with our arguments
+            original_argv = sys.argv.copy()
+            
+            try:
+                # Set sys.argv for argparse to process
+                sys.argv = [sys.argv[0]] + (list(args[0]) if isinstance(args[0], (list, tuple)) else [str(args[0])])
+                
+                # Execute the compact command
+                compact_main()
+                return Ok("Compact code generation completed")
+            finally:
+                # Restore original sys.argv
+                sys.argv = original_argv
+        except Exception as e:
+            return Error(f"Error in compact command: {e}")
+    
+    # Default case with no arguments, just run with defaults
+    else:
+        try:
+            from .cli import main as compact_main
+            compact_main()
+            return Ok("Compact code generation completed")
+        except Exception as e:
+            return Error(f"Error in compact command: {e}") 
