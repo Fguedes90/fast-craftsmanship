@@ -2,11 +2,10 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-
+from typing import Optional
 import typer
 from expression import Error, Ok, Result, effect
 from expression.collections import Map
-
 from fcship.templates.api_templates import get_api_templates
 from fcship.tui import DisplayContext
 from fcship.utils import (
@@ -16,6 +15,7 @@ from fcship.utils import (
     ensure_directory,
     success_message,
 )
+from .base import Command
 
 
 @dataclass(frozen=True)
@@ -199,3 +199,23 @@ def api(
         return
 
     yield Ok(result.ok)
+
+
+class ApiCommand(Command):
+    def __init__(self):
+        super().__init__(
+            name="api",
+            help="Create and manage API endpoints.\n\nAvailable operations:\n- create: Create a new API endpoint\n\nExample: craftsmanship api create user"
+        )
+    
+    def execute(self, operation: str = "create", name: Optional[str] = None, ctx: Optional[DisplayContext] = None):
+        """Execute the API command with the given operation and name."""
+        if not name:
+            self.display_info()
+            return
+            
+        result = api(operation, name)
+        if result.is_error():
+            console.print(f"[red]Error: {result.error}[/red]")
+            return
+        return result.ok

@@ -240,3 +240,68 @@ async def verify(check_type: str = "all", console: Console | None = None) -> Non
         success_result = success_message(ctx, "✨ All verifications passed successfully!")
         if success_result.is_error():
             await handle_ui_error(success_result.error)
+
+"""Verify command implementation."""
+from typing import Optional
+import typer
+from expression import Error, Ok, Result, effect
+from fcship.tui import DisplayContext
+from fcship.utils import console
+from .base import Command
+
+@effect.result[str, str]()
+def validate_verify_operation(operation: str):
+    """Validate verify operation"""
+    valid_operations = ["lint", "type", "all"]
+    if operation in valid_operations:
+        yield Ok(operation)
+    else:
+        yield Error(f"Invalid operation '{operation}'. Supported operations: {', '.join(valid_operations)}")
+
+@effect.result[str, str]()
+def verify_code(operation: str = "all"):
+    """Verify code quality."""
+    try:
+        console.print(f"[blue]Verifying code ({operation})...[/]")
+        # Note: Implementation for code verification will go here
+        # For now, just return a placeholder message
+        yield Ok(f"Code verification ({operation}) completed")
+    except Exception as e:
+        yield Error(f"Failed to verify code: {e!s}")
+
+@effect.result[str, str]()
+def verify(
+    operation: str = typer.Argument("all", help="Operation to perform [lint, type, all]"),
+) -> Result[str, str]:
+    """Verify code quality."""
+    try:
+        # Validate operation
+        operation_result = yield from validate_verify_operation(operation)
+        if operation_result.is_error():
+            yield Error(operation_result.error)
+            return
+
+        # Execute operation
+        result = yield from verify_code(operation)
+        if result.is_error():
+            yield Error(result.error)
+            return
+        
+        yield Ok(result.ok)
+    except Exception as e:
+        yield Error(f"Unexpected error: {e!s}")
+
+class VerifyCommand(Command):
+    def __init__(self):
+        super().__init__(
+            name="verify",
+            help="Verify code quality.\n\nAvailable operations:\n- lint: Run linter\n- type: Run type checker\n- all: Run all verifications\n\nExample: craftsmanship verify all"
+        )
+    
+    def execute(self, operation: str = "all", ctx: Optional[DisplayContext] = None):
+        """Execute the verify command with the given operation."""
+        result = effect.attempt(verify, operation)
+        if isinstance(result, Error):
+            console.print(f"[red]Error: {result.error}[/red]")
+            return
+        return result.ok

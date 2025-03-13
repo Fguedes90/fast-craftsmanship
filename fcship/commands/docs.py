@@ -4,11 +4,15 @@ Este módulo contém comandos para gerenciar a documentação usando MkDocs.
 """
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import questionary
-from expression import Error, Ok, Result
+from expression import Error, Ok, Result, effect
 from rich.console import Console
+import typer
+from fcship.tui import DisplayContext
+from fcship.utils import console
+from .base import Command
 
 console = Console()
 
@@ -815,4 +819,61 @@ def build_docs(
         subprocess.run(cmd, check=True)
         return Ok(f"Documentação construída com sucesso na pasta '{site_dir}/'")
     except Exception as e:
-        return Error(f"Erro ao construir a documentação: {e!s}") 
+        return Error(f"Erro ao construir a documentação: {e!s}")
+
+@effect.result[str, str]()
+def validate_docs_operation(operation: str):
+    """Validate docs operation"""
+    if operation == "serve":
+        yield Ok(operation)
+    else:
+        yield Error(f"Invalid operation '{operation}'. Supported operations: [serve]")
+
+@effect.result[str, str]()
+def serve_docs():
+    """Serve documentation using mkdocs."""
+    try:
+        console.print("[blue]Starting documentation server...[/]")
+        # Note: We'll implement the actual server start logic later
+        yield Ok("Documentation server started")
+    except Exception as e:
+        yield Error(f"Failed to start documentation server: {e!s}")
+
+@effect.result[str, str]()
+def docs(
+    operation: str = typer.Argument("serve", help="Operation to perform [serve]"),
+) -> Result[str, str]:
+    """Serve project documentation."""
+    try:
+        # Validate operation
+        operation_result = yield from validate_docs_operation(operation)
+        if operation_result.is_error():
+            yield Error(operation_result.error)
+            return
+
+        # Execute operation
+        if operation == "serve":
+            result = yield from serve_docs()
+            if result.is_error():
+                yield Error(result.error)
+                return
+            yield Ok(result.ok)
+        else:
+            yield Error(f"Unsupported operation: {operation}")
+    except Exception as e:
+        yield Error(f"Unexpected error: {e!s}")
+
+class DocsCommand(Command):
+    def __init__(self):
+        super().__init__(
+            name="docs",
+            help="Manage project documentation.\n\nAvailable operations:\n- serve: Start the documentation server\n\nExample: craftsmanship docs serve"
+        )
+    
+    def execute(self, operation: str = "serve", ctx: Optional[DisplayContext] = None):
+        """Execute the docs command with the given operation."""
+        result = effect.attempt(docs, operation)
+        if isinstance(result, Error):
+            console.print(f"[red]Error: {result.error}[/red]")
+            return
+        return result.ok

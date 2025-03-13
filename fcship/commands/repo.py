@@ -1,242 +1,159 @@
-"""Repository command implementation using Railway Oriented Programming."""
-
+"""Repository command implementation."""
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
-
+from typing import Optional
 import typer
-from expression import Error, Ok, effect, tagged_union
+from expression import Error, Ok, Result, effect
 from expression.collections import Map
-from rich.console import Console
-
 from fcship.templates.repo_templates import get_repo_templates
-from fcship.tui.display import DisplayContext, error_message, success_message
-from fcship.utils.error_handling import handle_command_errors
-from fcship.utils.file_utils import ensure_directory, write_file
-
-
-@tagged_union
-class RepoError:
-    """Tagged union for repository command errors."""
-
-    tag: Literal["validation_error", "file_error", "template_error"]
-    validation_error: str | None = None
-    file_error: tuple[str, str] | None = None
-    template_error: str | None = None
-
-    @staticmethod
-    def ValidationError(message: str) -> "RepoError":
-        """Creates a validation error."""
-        return RepoError(tag="validation_error", validation_error=message)
-
-    @staticmethod
-    def FileError(path: str, details: str) -> "RepoError":
-        """Creates a file operation error."""
-        return RepoError(tag="file_error", file_error=(path, details))
-
-    @staticmethod
-    def TemplateError(message: str) -> "RepoError":
-        """Creates a template generation error."""
-        return RepoError(tag="template_error", template_error=message)
-
+from fcship.tui import DisplayContext
+from fcship.utils import (
+    FileCreationTracker,
+    console,
+    create_single_file,
+    ensure_directory,
+    success_message,
+)
+from .base import Command
 
 @dataclass(frozen=True)
 class RepoContext:
-    """Immutable context for repository creation."""
-
+    """Immutable context for repository creation"""
     name: str
-    files: Map[str, str]  # Maps relative file path to content
+    files: Map[str, str]
 
-
-@dataclass(frozen=True)
-class FileCreationTracker:
-    """Tracks created files."""
-
-    files: list[Path] = None
-
-    def __post_init__(self):
-        object.__setattr__(self, "files", self.files or [])
-
-    def add_file(self, path: Path) -> "FileCreationTracker":
-        """Add a file to the tracker."""
-        return FileCreationTracker(files=self.files + [path])
-
-
-@effect.result[str, RepoError]()
-def validate_repo_operation(operation: str):
-    """Validate the repository operation."""
-    valid_operations = ["create"]
-
-    if operation not in valid_operations:
-        yield Error(
-            RepoError.ValidationError(
-                f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
-            )
-        )
-        return
-
-    yield Ok(operation)
-
-
-@effect.result[str, RepoError]()
+@effect.result[str, str]()
 def validate_repo_name(name: str):
-    """Validate the repository name."""
+    """Validate repository name"""
     name = name.strip()
-
     if not name:
-        yield Error(RepoError.ValidationError("Repository name cannot be empty"))
-        return
+        yield Error("Repository name cannot be empty")
+    elif not name.isidentifier():
+        yield Error("Repository name must be a valid Python identifier")
+    else:
+        yield Ok(name)
 
-    if not name.isidentifier():
-        yield Error(RepoError.ValidationError("Repository name must be a valid Python identifier"))
-        return
-
-    yield Ok(name)
-
-
-@effect.result[RepoContext, RepoError]()
-def prepare_repo_context(name: str):
-    """Prepare repository context with templates."""
+@effect.result[RepoContext, str]()
+def prepare_repo_files(name: str):
+    """Prepare repository files from templates"""
     try:
-        # Get templates
-        files_dict = get_repo_templates(name)
-
-        # Convert to Map
+        files = get_repo_templates(name)
         files_map = Map.empty()
-        for path, content in files_dict.items():
+        for path, content in files.items():
             files_map = files_map.add(path, content)
-
-        # Create context
         yield Ok(RepoContext(name=name, files=files_map))
     except Exception as e:
-        yield Error(RepoError.TemplateError(f"Failed to generate repository templates: {e!s}"))
+        yield Error(f"Failed to prepare repository files: {e!s}")
 
-
-@effect.result[Path, RepoError]()
-def create_repo_file(file_path: str, content: str):
-    """Create a single repository file."""
+@effect.result[None, str]()
+def ensure_repo_directories():
+    """Ensure repository directories exist"""
     try:
-        # Create path object
-        path = Path(file_path)
-
-        # Ensure directory exists
-        dir_result = ensure_directory(path.parent)
-        if dir_result.is_error():
-            yield Error(
-                RepoError.FileError(
-                    str(path.parent), f"Failed to create directory: {dir_result.error}"
-                )
-            )
-            return
-
-        # Write file
-        write_result = write_file(path, content)
-        if write_result.is_error():
-            yield Error(
-                RepoError.FileError(str(path), f"Failed to write file: {write_result.error}")
-            )
-            return
-
-        yield Ok(path)
+        directories = [Path("infrastructure/repositories")]
+        for directory in directories:
+            result = ensure_directory(directory)
+            if result.is_error():
+                yield Error(f"Failed to create repository directories: {result.error}")
+                return
+        yield Ok(None)
     except Exception as e:
-        yield Error(RepoError.FileError(file_path, f"Unexpected error: {e!s}"))
+        yield Error(f"Failed to create repository directories: {e!s}")
 
-
-@effect.result[FileCreationTracker, RepoError]()
+@effect.result[FileCreationTracker, str]()
 def create_repo_files(ctx: RepoContext):
-    """Create all repository files."""
+    """Create repository files on disk"""
     try:
-        tracker = FileCreationTracker()
+        dir_result = yield from ensure_repo_directories()
+        if dir_result.is_error():
+            yield Error(dir_result.error)
+            return
 
-        # Process each file
-        for file_path, content in ctx.files.items():
-            # Create file
-            result = yield from create_repo_file(file_path, content)
+        tracker = FileCreationTracker()
+        for path, content in ctx.files.items():
+            result = yield from create_single_file(tracker, (Path(path), content))
             if result.is_error():
                 yield Error(result.error)
                 return
-
-            # Update tracker
-            tracker = tracker.add_file(result.ok)
-
+            tracker = result.ok
         yield Ok(tracker)
     except Exception as e:
-        yield Error(RepoError.FileError("repository", f"Failed to create repository files: {e!s}"))
+        yield Error(f"Failed to create repository files: {e!s}")
 
-
-@effect.result[str, RepoError]()
-def handle_repo_error(error: RepoError, ctx: DisplayContext = None):
-    """Handle repository errors with proper UI feedback."""
-    display_ctx = ctx or DisplayContext(console=Console())
-
-    match error:
-        case RepoError(tag="validation_error") if error.validation_error is not None:
-            yield from error_message(display_ctx, "Validation Error", error.validation_error)
-        case RepoError(tag="file_error") if error.file_error is not None:
-            path, details = error.file_error
-            yield from error_message(display_ctx, f"File Error: {path}", details)
-        case RepoError(tag="template_error") if error.template_error is not None:
-            yield from error_message(display_ctx, "Template Error", error.template_error)
-        case _:
-            yield from error_message(display_ctx, "Unknown Error", "An unknown error occurred")
-
-    yield Error(error)
-
-
-@effect.result[str, RepoError]()
-def create_repo(name: str, display_ctx: DisplayContext = None):
-    """Create repository implementation files."""
-    ctx = display_ctx or DisplayContext(console=Console())
-
-    # Validate repository name
-    name_result = yield from validate_repo_name(name)
-    if name_result.is_error():
-        yield from handle_repo_error(name_result.error, ctx)
-        return
-
-    # Prepare repository context
-    context_result = yield from prepare_repo_context(name_result.ok)
-    if context_result.is_error():
-        yield from handle_repo_error(context_result.error, ctx)
-        return
-
-    # Create files with status
-    with ctx.console.status("Creating repository files..."):
-        files_result = yield from create_repo_files(context_result.ok)
-        if files_result.is_error():
-            yield from handle_repo_error(files_result.error, ctx)
+@effect.result[str, str]()
+def create_repo(name: str):
+    """Create new repository files."""
+    try:
+        name_result = yield from validate_repo_name(name)
+        if name_result.is_error():
+            yield Error(name_result.error)
             return
 
-    # Show success message
-    message = f"Created repository {name}"
-    yield from success_message(ctx, message)
-    yield Ok(message)
+        context_result = yield from prepare_repo_files(name_result.ok)
+        if context_result.is_error():
+            yield Error(context_result.error)
+            return
 
+        tracker_result = yield from create_repo_files(context_result.ok)
+        if tracker_result.is_error():
+            yield Error(tracker_result.error)
+            return
 
-@handle_command_errors
-@effect.result[str, RepoError]()
-def repo(
-    operation: str = typer.Argument(..., help="Operation to perform [create]"),
-    name: str = typer.Argument(..., help="Name of the repository"),
-    ctx: DisplayContext = None,
-):
-    """Create repository implementation files."""
-    display_ctx = ctx or DisplayContext(console=Console())
+        msg = f"Created repository {name}"
+        display_ctx = DisplayContext(console=console)
+        notify_result = yield from success_message(display_ctx, msg)
+        if notify_result.is_error():
+            yield Error(notify_result.error)
+            return
 
-    # Validate operation
-    op_result = yield from validate_repo_operation(operation)
-    if op_result.is_error():
-        yield from handle_repo_error(op_result.error, display_ctx)
-        return
+        yield Ok(msg)
+    except Exception as e:
+        yield Error(f"Unexpected error: {e!s}")
 
-    # Execute operation
+@effect.result[tuple[str, str], str]()
+def validate_operation(operation: str, name: str):
+    """Validate repository operation"""
     if operation == "create":
-        result = yield from create_repo(name, display_ctx)
+        yield Ok((operation, name))
+    else:
+        yield Error(f"Invalid operation '{operation}'. Supported operations: [create]")
+
+@effect.result[str, str]()
+def repo(
+    operation: str = typer.Argument("create", help="Operation to perform [create]"),
+    name: str = typer.Argument(..., help="Name of the repository"),
+) -> Result[str, str]:
+    """Create new repository files."""
+    try:
+        operation_result = yield from validate_operation(operation, name)
+        if operation_result.is_error():
+            yield Error(operation_result.error)
+            return
+
+        _, repo_name = operation_result.ok
+        result = yield from create_repo(repo_name)
         if result.is_error():
-            yield from handle_repo_error(result.error, display_ctx)
+            yield Error(result.error)
             return
 
         yield Ok(result.ok)
-    else:
-        yield Error(RepoError.ValidationError(f"Unsupported operation: {operation}"))
-        return
+    except Exception as e:
+        yield Error(f"Unexpected error: {e!s}")
+
+class RepoCommand(Command):
+    def __init__(self):
+        super().__init__(
+            name="repo",
+            help="Create and manage repositories.\n\nAvailable operations:\n- create: Create a new repository\n\nExample: craftsmanship repo create user"
+        )
+    
+    def execute(self, operation: str = "create", name: Optional[str] = None, ctx: Optional[DisplayContext] = None):
+        """Execute the repository command with the given operation and name."""
+        if not name:
+            self.display_info()
+            return
+            
+        result = effect.attempt(repo, operation, name)
+        if isinstance(result, Error):
+            console.print(f"[red]Error: {result.error}[/red]")
+            return
+        return result.ok
